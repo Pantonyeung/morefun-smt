@@ -1,200 +1,220 @@
-import { useMemo, useState } from 'react';
-import { useSmtState } from './state/useSmtState';
-import type { CartItem, PaymentMethod, PendingKind, PrintJob, Product, TableSession, ViewKey } from './state/smtState';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { requiresConfiguration } from './domain/businessRules';
+import type { CartItem, NetworkOrder, OrderSource, PaymentMethod, Product, TableSession, ViewKey } from './domain/types';
+import { useSmtController } from './hooks/useSmtController';
+import { CheckoutModal } from './components/CheckoutModal';
+import { LoginScreen } from './components/LoginScreen';
+import { ConfirmDialog, Modal } from './components/Modal';
+import { ProductConfigurator } from './components/ProductConfigurator';
 
-type ShortcutKey = ViewKey | 'note' | 'lookup';
-type Shortcut = { key: ShortcutKey; label: string; glyph: string; fixed?: boolean };
-type EditMode = 'quick' | 'detail' | null;
-type PaymentTarget = { kind: 'order'; amount: number } | { kind: 'table'; tableId: string; amount: number } | null;
+const sourceOptions: Array<{ key: OrderSource; label: string }> = [
+  { key: 'walk_in', label: '現場外賣' },
+  { key: 'whatsapp', label: 'WhatsApp' },
+  { key: 'phone', label: '電話' },
+  { key: 'customer_web', label: '網站' },
+  { key: 'customer_app', label: 'App' },
+  { key: 'foodpanda', label: 'Foodpanda' },
+  { key: 'keeta', label: 'Keeta' },
+];
 
-const shortcuts: Shortcut[] = [
-  { key: 'order', label: '點單', glyph: '點', fixed: true },
-  { key: 'hold', label: '掛單', glyph: '掛', fixed: true },
-  { key: 'pending', label: '待補', glyph: '補', fixed: true },
-  { key: 'dinein', label: '堂食', glyph: '堂', fixed: true },
-  { key: 'workbench', label: '工作台', glyph: '工', fixed: true },
-  { key: 'note', label: '備註', glyph: '註' },
-  { key: 'soldout', label: '售罄', glyph: '售' },
-  { key: 'reprint', label: '重印', glyph: '印' },
+const navItems: Array<{ key: ViewKey; label: string; glyph: string }> = [
+  { key: 'order', label: '點單', glyph: '點' },
+  { key: 'workbench', label: '工作台', glyph: '工' },
+  { key: 'dinein', label: '堂食', glyph: '堂' },
+  { key: 'hold', label: '掛單', glyph: '掛' },
+  { key: 'pending', label: '待補', glyph: '補' },
   { key: 'lookup', label: '查單', glyph: '查' },
+  { key: 'soldout', label: '售罄', glyph: '售' },
   { key: 'more', label: '更多', glyph: '多' },
 ];
 
-const pendingLabels: Record<PendingKind, string> = {
-  drink: '飲品', rice_base: '飯底', sauce: '醬汁', sold_out_replacement: '售罄替代', price_version: '價格版本', product_invalid: '商品失效',
-};
-const paymentMethods: Array<{ key: PaymentMethod; label: string }> = [
-  { key: 'cash', label: '現金' }, { key: 'fps', label: 'FPS' }, { key: 'payme', label: 'PayMe' },
-  { key: 'alipay', label: 'Alipay' }, { key: 'wechat_pay', label: 'WeChat Pay' }, { key: 'mixed', label: '混合付款' },
-];
-const printDestinations: Array<{ key: PrintJob['destination']; label: string }> = [
-  { key: 'receipt', label: '收據' }, { key: 'kitchen_a', label: '後廚 A' }, { key: 'kitchen_b', label: '後廚 B' },
-  { key: 'label_a', label: '標籤 A' }, { key: 'label_b', label: '標籤 B' },
-];
-const sourceLabel: Record<string, string> = { walk_in: '現場', whatsapp: 'WhatsApp', phone: '電話', web: '網站', app: 'App', foodpanda: 'Foodpanda', keeta: 'Keeta' };
-
-const makeCartItem = (product: Product): CartItem => ({
-  id: `cart-${Date.now()}-${product.id}`, productId: product.id, qty: 1, summary: product.summary, adjustments: [], unitPrice: product.price,
-  priceVersion: 'local-v1', pendingIssueIds: [], paidQty: 0,
-});
-
 export default function App() {
-  const { state, selectors, actions } = useSmtState();
-  const [editMode, setEditMode] = useState<EditMode>(null);
-  const [editingItemId, setEditingItemId] = useState<string>();
-  const [draftNote, setDraftNote] = useState('');
-  const [lookupOpen, setLookupOpen] = useState(false);
+  const controller = useSmtController();
+  const { config, configErrors, device, user, profile, health, products, categories, cart, total, cartQty, pendingIssues, source, orderMode, tableId, orderNote, holds, tables, networkOrders, printJobs, toast, busyKey, view } = controller;
+  const { actions } = controller;
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('全部');
+  const [tag, setTag] = useState('全部');
+  const [configuring, setConfiguring] = useState<{ product: Product; item?: CartItem }>();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [selectedTableId, setSelectedTableId] = useState<string>();
+  const [splitTable, setSplitTable] = useState<TableSession>();
+  const [splitItemIds, setSplitItemIds] = useState<string[]>([]);
+  const [splitMethod, setSplitMethod] = useState<PaymentMethod>('cash');
+  const [reprintOrder, setReprintOrder] = useState<NetworkOrder>();
+  const [reprintReason, setReprintReason] = useState('客人要求補印');
   const [lookupText, setLookupText] = useState('');
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [paymentTarget, setPaymentTarget] = useState<PaymentTarget>(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [splitParts, setSplitParts] = useState(2);
-  const [reprintOrder, setReprintOrder] = useState<string>();
-  const [reprintDestinations, setReprintDestinations] = useState<PrintJob['destination'][]>(['receipt']);
+  const [workFilter, setWorkFilter] = useState<'all' | NetworkOrder['status']>('all');
 
-  const products = useMemo(() => Object.values(state.products), [state.products]);
-  const visibleProducts = useMemo(() => products.filter(product => {
-    if (product.availability !== 'available' || product.category !== state.ui.activeCategory) return false;
-    return state.ui.quickTag === '全部' || (product.tags?.includes(state.ui.quickTag) ?? false);
-  }), [products, state.ui.activeCategory, state.ui.quickTag]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(actions.clearToast, toast.kind === 'error' ? 7000 : 3500);
+    return () => window.clearTimeout(timer);
+  }, [toast, actions.clearToast]);
 
-  const editingItem = editingItemId ? state.cartItems[editingItemId] : undefined;
-  const editingProduct = editingItem ? state.products[editingItem.productId] : undefined;
-  const pendingIssues = useMemo(() => Object.values(state.pendingIssues).filter(issue => issue.state === 'open'), [state.pendingIssues]);
-  const pendingKinds = [...new Set(pendingIssues.map(issue => issue.kind))];
-  const holdOrders = Object.values(state.holdOrders);
-  const workbenchOrders = Object.values(state.workbenchOrders);
-  const activeWorkbench = workbenchOrders.filter(order => order.status === 'open' || order.status === 'ready');
-  const newWorkbench = workbenchOrders.filter(order => order.status === 'new');
-  const abnormalWorkbench = workbenchOrders.filter(order => order.status === 'abnormal');
-  const selectedTable = state.ui.selectedTableId ? state.tableSessions[state.ui.selectedTableId] : undefined;
-  const reprintOrders = ['#0128', '#0127', '#0125', '#0122'];
+  const visibleProducts = useMemo(() => Object.values(products).filter((product) => {
+    const query = search.trim().toLowerCase();
+    if (category !== '全部' && product.category !== category) return false;
+    if (tag !== '全部' && !product.tags.some((value) => value.includes(tag))) return false;
+    return !query || `${product.code} ${product.name} ${product.category} ${product.tags.join(' ')}`.toLowerCase().includes(query);
+  }), [products, search, category, tag]);
 
-  const badgeFor = (key: ShortcutKey, side: 'left' | 'right') => {
-    if (key === 'hold' && side === 'left') return holdOrders.length;
-    if (key === 'pending' && side === 'left') return selectors.openPendingCount;
-    if (key === 'dinein' && side === 'left') return selectors.occupiedTableCount;
-    if (key === 'workbench' && side === 'left') return selectors.newNetworkOrderCount;
-    if (key === 'workbench' && side === 'right') return selectors.abnormalOrderCount;
-    if (key === 'soldout' && side === 'right') return selectors.soldOutCount;
-    return 0;
+  const currentTable = tables.find((table) => table.id === selectedTableId);
+  const filteredOrders = useMemo(() => networkOrders.filter((order) => {
+    if (workFilter !== 'all' && order.status !== workFilter) return false;
+    const query = lookupText.trim().toLowerCase();
+    return !query || `${order.orderNo} ${sourceLabel(order.source)} ${order.status} ${order.id}`.toLowerCase().includes(query);
+  }), [networkOrders, workFilter, lookupText]);
+
+  if (config.mode !== 'demo' && (!user || health.auth === 'signed_out')) {
+    return <LoginScreen mode={config.mode} configErrors={configErrors} busy={busyKey === 'login'} onLogin={actions.login} onSetMode={actions.setRuntimeMode} />;
+  }
+
+  if (config.mode !== 'demo' && health.auth === 'forbidden') {
+    return <main className="login-page"><section className="login-card"><div className="login-brand"><span className="brand-mark">磨飯</span><div><strong>SMT</strong><small>權限驗證失敗</small></div></div><div className="setup-warning"><strong>此帳戶未獲 SMT 權限</strong><p>請確認 staffProfiles/{user?.uid} 的 active=true，role=smt 或 admin。</p></div><button className="button secondary wide-button" onClick={() => void actions.logout()}>登出</button></section></main>;
+  }
+
+  const addProduct = (product: Product) => {
+    if (requiresConfiguration(product) || !actions.quickAdd(product)) setConfiguring({ product });
   };
 
-  const navigate = (key: ShortcutKey) => {
-    if (key === 'note') { setDraftNote(state.currentOrder.note); actions.openModal('note'); return; }
-    if (key === 'lookup') { setLookupOpen(true); return; }
-    actions.navigate(key);
+  const run = async (operation: () => Promise<unknown>) => {
+    try { await operation(); }
+    catch (error) { actions.showToast({ kind: 'error', message: (error as Error).message }); }
   };
 
-  const openEdit = (item: CartItem, mode: EditMode) => { setEditingItemId(item.id); setDraftNote(item.note ?? ''); setEditMode(mode); };
-  const saveEdit = () => { if (!editingItem) return; actions.updateCartItem({ ...editingItem, note: draftNote }); setEditMode(null); };
-
-  const createHold = () => {
-    if (!selectors.cartItems.length) return;
-    actions.dispatch({ type: 'CREATE_HOLD', hold: {
-      id: `hold-${Date.now()}`, title: `SMT 暫存${String(holdOrders.length + 1).padStart(2, '0')}`,
-      orderSnapshot: { ...state.currentOrder, status: 'held' }, itemSnapshots: selectors.cartItems.map(item => ({ ...item })),
-      createdAt: new Date().toISOString(), operatorId: state.currentOrder.operatorId,
-    } });
-  };
-
-  const openOrderPayment = () => {
-    if (selectors.openPendingCount) { actions.openModal('pendingBatch'); return; }
-    setPaymentTarget({ kind: 'order', amount: selectors.cartTotal });
-    setPaymentAmount(String(selectors.cartTotal));
-  };
-
-  const openTablePayment = (table: TableSession, amount?: number) => {
-    const unpaid = Math.max(0, table.totalAmount - table.paidAmount);
-    const targetAmount = Math.min(unpaid, amount ?? unpaid);
-    if (targetAmount <= 0) { actions.dispatch({ type: 'SHOW_TOAST', kind: 'info', message: `${table.tableName} 已全部付款` }); return; }
-    setPaymentTarget({ kind: 'table', tableId: table.id, amount: targetAmount });
-    setPaymentAmount(String(targetAmount));
-  };
-
-  const finishPayment = (method: PaymentMethod) => {
-    if (!paymentTarget) return;
-    const amount = Math.max(0, Math.min(Number(paymentAmount) || paymentTarget.amount, paymentTarget.amount));
-    if (amount <= 0) return;
-    actions.dispatch({ type: 'ADD_PAYMENT', payment: {
-      id: `payment-${Date.now()}`, orderId: paymentTarget.kind === 'order' ? state.currentOrder.id : paymentTarget.tableId,
-      groupId: `group-${Date.now()}`, method, amount, status: amount >= paymentTarget.amount ? 'paid' : 'partial',
-      createdAt: new Date().toISOString(), operatorId: state.currentOrder.operatorId,
-    } });
-    if (paymentTarget.kind === 'table') {
-      const table = state.tableSessions[paymentTarget.tableId];
-      actions.dispatch({ type: 'UPDATE_TABLE', table: { ...table, paidAmount: Math.min(table.totalAmount, table.paidAmount + amount) } });
-    } else {
-      actions.clearCart();
-    }
-    actions.dispatch({ type: 'SHOW_TOAST', kind: 'success', message: `已收 ${paymentMethods.find(item => item.key === method)?.label} HK$${amount}` });
-    setPaymentTarget(null);
-  };
-
-  const enterTableOrder = (table: TableSession) => {
-    const nextTable = table.status === 'vacant' ? { ...table, status: 'occupied' as const, openedAt: new Date().toISOString() } : table;
-    if (table.status === 'vacant') actions.dispatch({ type: 'UPDATE_TABLE', table: nextTable });
-    actions.dispatch({ type: 'SET_ORDER_MODE', mode: 'dinein', tableId: table.id });
-    actions.navigate('order');
-    actions.dispatch({ type: 'SHOW_TOAST', kind: 'info', message: `${table.tableName} 追加點單` });
-  };
-
-  const confirmReprint = () => {
-    if (!reprintOrder || !reprintDestinations.length) return;
-    reprintDestinations.forEach((destination, index) => actions.dispatch({ type: 'UPSERT_PRINT_JOB', job: {
-      id: `reprint-${Date.now()}-${index}`, orderId: reprintOrder, destination,
-      quantityMode: state.settings.printQuantityByDestination[destination], copies: 1, status: 'queued', attemptCount: 0, createdAt: new Date().toISOString(),
-    } }));
-    actions.dispatch({ type: 'SHOW_TOAST', kind: 'success', message: `${reprintOrder} 已建立 ${reprintDestinations.length} 個重印工作` });
-    setReprintOrder(undefined);
-  };
-
-  return <div className="smt-shell">
-    <header className="smt-topbar">
-      <div className="brand"><strong>磨飯</strong><span>MORE<br />FUN</span><b>SMT</b><em>{state.currentOrder.mode === 'dinein' && state.currentOrder.tableId ? `${state.tableSessions[state.currentOrder.tableId]?.tableName} · ` : ''}單號 {state.currentOrder.orderNo}</em></div>
-      <div className="health-icons">{Object.values(state.systemHealth).map(item => <button key={item.key} className={`health ${item.status === 'ok' ? 'ok' : 'alert'}`} onClick={() => actions.dispatch({ type: 'SHOW_TOAST', kind: item.status === 'ok' ? 'info' : 'error', message: `${item.label}：${item.message}` })}><span>{item.label.slice(0, 1)}</span>{item.issueCount > 0 ? <i>{item.issueCount}</i> : null}</button>)}</div>
-      <div className="top-actions"><button className="new-order" onClick={() => actions.navigate('workbench')}>新單 <i>{selectors.newNetworkOrderCount}</i></button><button onClick={() => actions.navigate('more')}>更多</button></div>
+  return <div className="smt-app">
+    <header className="topbar">
+      <div className="brand-lockup"><span className="brand-word">磨飯</span><b>SMT</b><div><strong>{orderMode === 'dinein' && tableId ? tables.find((table) => table.id === tableId)?.tableName : '快速開單'}</strong><small>{profile?.displayName || 'Demo Operator'} · {device.deviceNumber || '未綁定裝置'}</small></div></div>
+      <div className="runtime-strip">
+        <span className={`mode-pill mode-${config.mode}`}>{config.mode === 'live' ? 'LIVE' : config.mode === 'staging' ? 'STAGING' : 'DEMO'}</span>
+        <HealthChip label="Firebase" status={health.firebase} />
+        <HealthChip label="API" status={health.api} />
+        <HealthChip label="Realtime" status={health.realtime} />
+        <span className="health-message">{health.lastMessage}</span>
+      </div>
+      <div className="top-actions"><button className="button secondary" onClick={() => actions.setView('workbench')}>新網絡單 <Badge value={controller.newNetworkCount} /></button><button className="icon-button" onClick={() => actions.setView('more')} aria-label="更多設定">⋯</button></div>
     </header>
 
-    <main className="app-stage">
-      {state.ui.view === 'order' ? <div className="order-layout">
-        <section className="cart-pane">
-          <div className="cart-head"><div><span>購</span><strong>購物車</strong></div><button onClick={() => setConfirmClear(true)} title="清空購物車">清空</button></div>
-          <div className="cart-scroll">{selectors.cartItems.map(item => { const product = state.products[item.productId]; return <article className="cart-line" key={item.id}><div className="cart-line-head"><strong>{product.code} {product.name}</strong><b>HK${item.unitPrice * item.qty}</b><button onClick={() => openEdit(item, 'quick')}>⋮</button></div>{item.summary ? <p>{item.summary}</p> : null}{item.note ? <p>備註：{item.note}</p> : null}<div className="cart-line-actions">{product.mergeMode === 'MERGE_IDENTICAL' ? <div className="qty"><button onClick={() => actions.updateCartItem({ ...item, qty: Math.max(1, item.qty - 1) })}>−</button><span>{item.qty}</span><button onClick={() => actions.updateCartItem({ ...item, qty: item.qty + 1 })}>＋</button></div> : <span />}<button className="text-action" onClick={() => openEdit(item, 'detail')}>完整詳情</button></div></article>; })}</div>
-          <div className="checkout-strip"><span>共 {selectors.cartQty} 件</span><strong>HK${selectors.cartTotal}</strong><button onClick={openOrderPayment}>{selectors.openPendingCount ? `先處理待補 ${selectors.openPendingCount}` : '收款'}</button></div>
+    <main className="workspace">
+      {view === 'order' ? <div className="order-workspace">
+        <aside className="cart-panel">
+          <div className="cart-context">
+            <label><span>來源</span><select value={source} onChange={(event) => actions.setSource(event.target.value as OrderSource)}>{sourceOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></label>
+            <div className="segmented"><button className={orderMode === 'takeaway' ? 'active' : ''} onClick={() => { actions.setOrderMode('takeaway'); actions.setTableId(undefined); }}>外賣</button><button className={orderMode === 'dinein' ? 'active' : ''} onClick={() => actions.setView('dinein')}>堂食</button></div>
+          </div>
+          <div className="cart-heading"><div><strong>購物車</strong><span>{cartQty} 件</span></div><div><button className="text-button" disabled={!cart.length} onClick={actions.holdCurrent}>掛單</button><button className="text-button danger-text" disabled={!cart.length} onClick={() => setClearConfirm(true)}>清空</button></div></div>
+          <div className="cart-list">
+            {cart.length ? cart.map((item) => {
+              const product = products[item.productId];
+              return <article className={`cart-item ${item.pendingIssues.length ? 'has-issue' : ''}`} key={item.id}>
+                <div className="cart-item-title"><div><strong>{product?.code} {product?.name}</strong>{item.pendingIssues.length ? <span className="pending-label">待補 {item.pendingIssues.length}</span> : null}</div><b>HK${item.estimatedUnitPrice * item.quantity}</b></div>
+                <p>{item.summary}</p>{item.note ? <small>備註：{item.note}</small> : null}
+                <div className="cart-item-actions"><div className="qty-control"><button onClick={() => actions.updateQuantity(item.id, item.quantity - 1)}>−</button><span>{item.quantity}</span><button onClick={() => actions.updateQuantity(item.id, item.quantity + 1)}>＋</button></div><button className="text-button" onClick={() => product && setConfiguring({ product, item })}>修改</button><button className="icon-button small" onClick={() => actions.removeItem(item.id)} aria-label={`刪除 ${product?.name}`}>×</button></div>
+              </article>;
+            }) : <EmptyState icon="購" title="購物車未有餐點" message="點擊右邊商品即可開始開單" />}
+          </div>
+          <label className="order-note"><span>整單備註</span><textarea value={orderNote} onChange={(event) => actions.setOrderNote(event.target.value)} placeholder="客人趕時間、分開包裝、到店致電…" /></label>
+          <div className={`checkout-bar ${pendingIssues.length ? 'blocked' : ''}`}><div><small>前端估算</small><strong>HK${total}</strong></div><button disabled={!cart.length} onClick={() => pendingIssues.length ? actions.setView('pending') : setCheckoutOpen(true)}>{pendingIssues.length ? `先處理待補 ${pendingIssues.length}` : '核對及收款'}</button></div>
+        </aside>
+
+        <section className="catalog-panel">
+          <div className="catalog-tools"><div className="search-box"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜尋商品名稱、編號或分類" /></div><span className="catalog-count">{visibleProducts.length} / {Object.keys(products).length}</span></div>
+          <div className="category-tabs"><button className={category === '全部' ? 'active' : ''} onClick={() => setCategory('全部')}>全部</button>{categories.map((value) => <button key={value} className={category === value ? 'active' : ''} onClick={() => setCategory(value)}>{value}</button>)}</div>
+          <div className="quick-tags">{['全部', '雞', '豬', '魚', '牛', '素', '飲品'].map((value) => <button key={value} className={tag === value ? 'active' : ''} onClick={() => setTag(value)}>{value}</button>)}</div>
+          <div className="product-grid">{visibleProducts.map((product) => <ProductCard key={product.id} product={product} onOpen={() => addProduct(product)} onDetail={() => setConfiguring({ product })} />)}{!visibleProducts.length ? <EmptyState icon="空" title="此篩選沒有商品" message="嘗試切換分類或清除搜尋" /> : null}</div>
         </section>
-        <section className="product-pane"><div className="category-grid">{[...new Set(products.map(product => product.category))].map(category => <button key={category} className={category === state.ui.activeCategory ? 'active' : ''} onClick={() => actions.dispatch({ type: 'SET_CATEGORY', category })}>{category}</button>)}</div><div className="quick-tags">{['全部', '雞', '豬', '魚', '牛', '素', '飲品'].map(tag => <button key={tag} className={tag === state.ui.quickTag ? 'active' : ''} onClick={() => actions.dispatch({ type: 'SET_QUICK_TAG', tag })}>{tag}</button>)}</div><div className="product-grid">{visibleProducts.map(product => <article className="product-card" key={product.id}><button className="product-hit" onClick={() => actions.addCartItem(makeCartItem(product))}><div className="food-art">{product.code}</div><strong>{product.name}</strong><b>HK${product.price}</b></button><button className="product-more" onClick={() => actions.addCartItem(makeCartItem(product))}>＋</button></article>)}{visibleProducts.length === 0 ? <div className="empty-state">此分類暫無可售商品</div> : null}</div></section>
       </div> : null}
 
-      {state.ui.view === 'hold' ? <Panel title="掛單／取單" subtitle="掛起目前購物車，或恢復暫存訂單"><button className="primary" disabled={!selectors.cartItems.length} onClick={createHold}>掛起目前訂單</button><div className="list-grid">{holdOrders.map(hold => <article className="list-card" key={hold.id}><div><strong>{hold.title}</strong><p>{hold.itemSnapshots.length} 項 · {new Date(hold.createdAt).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' })}</p></div><b>HK${hold.itemSnapshots.reduce((sum, item) => sum + item.unitPrice * item.qty, 0)}</b><button onClick={() => actions.dispatch({ type: 'RESTORE_HOLD', holdId: hold.id })}>恢復</button></article>)}</div></Panel> : null}
-      {state.ui.view === 'pending' ? <Panel title="待補／重組" subtitle="相同缺項可一鍵處理，再個別微調"><div className="batch-actions">{pendingKinds.map(kind => <button key={kind} onClick={() => actions.resolvePendingBatch(kind)}>{`一鍵補充全部${pendingLabels[kind]}`}</button>)}</div><div className="list-grid">{pendingIssues.map(issue => <article className="list-card warn" key={issue.id}><div><strong>{issue.message}</strong><p>{pendingLabels[issue.kind]} · 價格變化 HK${issue.priceDelta}</p></div><button onClick={() => actions.dispatch({ type: 'RESOLVE_PENDING', issueId: issue.id })}>完成處理</button></article>)}</div></Panel> : null}
+      {view === 'workbench' ? <Panel title="訂單工作台" subtitle={`待接 ${controller.newNetworkCount} · 異常 ${controller.abnormalCount} · Realtime ${health.realtime}`} actions={<button className="button secondary" onClick={() => setLookupText('')}>清除搜尋</button>}>
+        <div className="workbench-tools"><div className="search-box"><span>⌕</span><input value={lookupText} onChange={(event) => setLookupText(event.target.value)} placeholder="搜尋單號、來源、狀態" /></div><div className="status-tabs">{(['all', 'pending', 'accepted', 'preparing', 'ready', 'abnormal'] as const).map((status) => <button key={status} className={workFilter === status ? 'active' : ''} onClick={() => setWorkFilter(status)}>{status === 'all' ? '全部' : statusLabel(status)}</button>)}</div></div>
+        <div className="order-list">{filteredOrders.map((order) => <OrderCard key={order.id} order={order} busy={busyKey.includes(order.id)} onAccept={() => void run(() => actions.acceptOrder(order))} onAdvance={() => void run(() => actions.advanceOrder(order))} onReprint={() => { setReprintOrder(order); setReprintReason('客人要求補印'); }} />)}{!filteredOrders.length ? <EmptyState icon="單" title="沒有符合條件的訂單" message="Realtime queue 會在收到新單時自動更新" /> : null}</div>
+      </Panel> : null}
 
-      {state.ui.view === 'dinein' ? <Panel title="堂食" subtitle={`使用中 ${selectors.occupiedTableCount} 枱`}>{selectedTable ? <div className="table-detail"><button className="back-link" onClick={() => actions.dispatch({ type: 'SELECT_TABLE', tableId: undefined })}>‹ 返回枱號</button><h2>{selectedTable.tableName}</h2><div className="payment-summary"><span>總額 HK${selectedTable.totalAmount}</span><span className="paid">已付 HK${selectedTable.paidAmount}</span><span className="unpaid">未付 HK${Math.max(0, selectedTable.totalAmount - selectedTable.paidAmount)}</span></div><div className="split-control"><strong>平均分單</strong><div>{[2,3,4,5,6,7,8,9,10].map(parts => <button key={parts} className={splitParts === parts ? 'active' : ''} onClick={() => setSplitParts(parts)}>{parts}份</button>)}</div><p>每份約 HK${Math.ceil(Math.max(0, selectedTable.totalAmount - selectedTable.paidAmount) / splitParts)}</p></div><div className="table-actions"><button onClick={() => enterTableOrder(selectedTable)}>追加單</button><button onClick={() => openTablePayment(selectedTable, Math.ceil(Math.max(0, selectedTable.totalAmount - selectedTable.paidAmount) / splitParts))}>支付一份</button><button onClick={() => openTablePayment(selectedTable)}>全數付款</button><button onClick={() => openTablePayment(selectedTable)}>混合付款</button></div></div> : <div className="table-grid">{Object.values(state.tableSessions).map(table => <button className={`table-card ${table.status === 'occupied' ? 'active' : ''}`} key={table.id} onClick={() => table.status === 'vacant' ? enterTableOrder(table) : actions.dispatch({ type: 'SELECT_TABLE', tableId: table.id })}><strong>{table.tableName}</strong><span>{table.status === 'occupied' ? `使用中 · HK$${table.totalAmount}` : '空枱 · 點擊開單'}</span>{table.status === 'occupied' ? <small>未付 HK${Math.max(0, table.totalAmount - table.paidAmount)}</small> : null}</button>)}</div>}</Panel> : null}
+      {view === 'dinein' ? <Panel title="堂食管理" subtitle={`使用中 ${controller.occupiedTables} 枱 · 按商品拆單，不使用平均除人數`}>
+        {currentTable ? <TableDetail table={currentTable} onBack={() => setSelectedTableId(undefined)} onAdd={() => actions.openTable(currentTable)} onSplit={() => { setSplitTable(currentTable); setSplitItemIds([]); }} /> : <div className="table-grid">{tables.map((table) => <button key={table.id} className={`table-card ${table.status}`} onClick={() => table.status === 'vacant' ? actions.openTable(table) : setSelectedTableId(table.id)}><strong>{table.tableName}</strong><span>{table.status === 'vacant' ? '空枱 · 點擊開單' : table.status === 'reserved' ? '已預約' : '使用中'}</span>{table.status === 'occupied' ? <><small>{table.lineItems.filter((line) => !line.paid).length} 項未付</small><b>HK${table.lineItems.filter((line) => !line.paid).reduce((sum, line) => sum + line.amount, 0)}</b></> : null}</button>)}</div>}
+      </Panel> : null}
 
-      {state.ui.view === 'workbench' ? <Panel title="工作台" subtitle={`現正處理 ${activeWorkbench.length} 張訂單`}><div className="workbench-summary"><button className="network-box"><span>網絡單</span><strong>{newWorkbench.length}</strong><small>待接收</small></button><button className="abnormal-box"><span>異常單</span><strong>{abnormalWorkbench.length}</strong><small>需人工處理</small></button></div><div className="list-grid">{[...activeWorkbench, ...newWorkbench, ...abnormalWorkbench].map(order => <article className={`list-card ${order.status === 'abnormal' ? 'warn' : ''}`} key={order.id}><div><strong>{order.orderNo}</strong><p>{sourceLabel[order.source]} · {order.status}</p></div><b>HK${order.amount}</b><button onClick={() => actions.dispatch({ type: 'UPSERT_WORKBENCH_ORDER', order: { ...order, status: order.status === 'new' ? 'open' : order.status } })}>{order.status === 'new' ? '接單' : '查看'}</button></article>)}</div></Panel> : null}
+      {view === 'hold' ? <Panel title="掛單／取單" subtitle="掛單只保存在本機，恢復時會重新檢查商品狀態">
+        <div className="card-list">{holds.map((hold) => <article className="list-card" key={hold.id}><div><strong>{hold.title}</strong><p>{hold.draft.items.length} 項 · {sourceLabel(hold.draft.source)} · {new Date(hold.createdAt).toLocaleTimeString('zh-HK')}</p></div><b>HK${hold.draft.items.reduce((sum, item) => sum + item.estimatedUnitPrice * item.quantity, 0)}</b><div><button className="button primary" onClick={() => actions.restoreHold(hold)}>恢復</button><button className="button ghost danger-text" onClick={() => actions.deleteHold(hold.id)}>刪除</button></div></article>)}{!holds.length ? <EmptyState icon="掛" title="沒有掛單" message="清空或中途轉單前，可先將購物車掛起" /> : null}</div>
+      </Panel> : null}
 
-      {state.ui.view === 'soldout' ? <Panel title="售罄管理" subtitle={`目前售罄 ${selectors.soldOutCount} 款`}><div className="list-grid">{products.map(product => <article className={`list-card ${product.availability === 'sold_out' ? 'warn' : ''}`} key={product.id}><div><strong>{product.code} {product.name}</strong><p>{product.category}</p></div><button onClick={() => actions.dispatch({ type: 'SET_AVAILABILITY', productId: product.id, state: product.availability === 'sold_out' ? 'available' : 'sold_out', updatedBy: 'morefun', updatedAt: new Date().toISOString() })}>{product.availability === 'sold_out' ? '恢復' : '設為售罄'}</button></article>)}</div></Panel> : null}
+      {view === 'pending' ? <Panel title="待補／重組" subtitle={`尚有 ${pendingIssues.length} 個問題，全部完成後才可收款`}>
+        <div className="pending-list">{cart.filter((item) => item.pendingIssues.length).map((item) => { const product = products[item.productId]; return <article key={item.id}><div><strong>{product?.code} {product?.name}</strong>{item.pendingIssues.map((issue) => <p key={`${issue.kind}-${issue.message}`}>{issue.message}</p>)}</div><button className="button primary" onClick={() => product && setConfiguring({ product, item })}>立即處理</button></article>; })}{!pendingIssues.length ? <EmptyState icon="✓" title="沒有待補項目" message="所有商品選項完整，可以前往收款" /> : null}</div>
+      </Panel> : null}
 
-      {state.ui.view === 'reprint' ? <Panel title="重印" subtitle="選擇訂單及打印目的地"><div className="reprint-layout"><div className="list-grid">{reprintOrders.map(orderNo => <button key={orderNo} className={`reprint-order ${reprintOrder === orderNo ? 'active' : ''}`} onClick={() => setReprintOrder(orderNo)}><strong>{orderNo}</strong><span>查看可重印文件</span></button>)}</div><div className="reprint-options"><h3>{reprintOrder ?? '先選擇訂單'}</h3>{printDestinations.map(destination => <label key={destination.key}><input type="checkbox" checked={reprintDestinations.includes(destination.key)} onChange={() => setReprintDestinations(current => current.includes(destination.key) ? current.filter(item => item !== destination.key) : [...current, destination.key])} />{destination.label}</label>)}<button className="primary" disabled={!reprintOrder || !reprintDestinations.length} onClick={confirmReprint}>確認重印</button></div></div></Panel> : null}
+      {view === 'lookup' ? <Panel title="查單" subtitle="依單號、來源、狀態搜尋 Realtime 訂單">
+        <div className="search-box lookup-search"><span>⌕</span><input value={lookupText} onChange={(event) => setLookupText(event.target.value)} placeholder="例如 W-1048、WhatsApp、可取餐" /></div>
+        <div className="order-list">{filteredOrders.map((order) => <OrderCard key={order.id} order={order} busy={false} onAccept={() => void run(() => actions.acceptOrder(order))} onAdvance={() => void run(() => actions.advanceOrder(order))} onReprint={() => setReprintOrder(order)} />)}{!filteredOrders.length ? <EmptyState icon="查" title="找不到訂單" message="目前只顯示 Firebase pending／active queue；歷史查詢需後端 search endpoint" /> : null}</div>
+      </Panel> : null}
 
-      {state.ui.view === 'more' ? <Panel title="更多／設定" subtitle="所有設定即時套用到本機 UI"><div className="settings-grid interactive-settings"><button onClick={() => actions.dispatch({ type: 'UPDATE_SETTINGS', settings: { categoryColumns: state.settings.categoryColumns === 6 ? 4 : state.settings.categoryColumns + 1 as 4 | 5 | 6 } })}><span>分類每行</span><strong>{state.settings.categoryColumns}</strong></button><button onClick={() => actions.dispatch({ type: 'UPDATE_SETTINGS', settings: { productColumns: state.settings.productColumns === 5 ? 3 : state.settings.productColumns + 1 as 3 | 4 | 5 } })}><span>商品每行</span><strong>{state.settings.productColumns}</strong></button><button onClick={() => actions.dispatch({ type: 'UPDATE_SETTINGS', settings: { defaultMergeMode: state.settings.defaultMergeMode === 'MERGE_IDENTICAL' ? 'SEPARATE_EACH' : 'MERGE_IDENTICAL' } })}><span>購物車合併</span><strong>{state.settings.defaultMergeMode === 'MERGE_IDENTICAL' ? '相同合併' : '逐項分開'}</strong></button><button onClick={() => actions.dispatch({ type: 'SHOW_TOAST', kind: 'info', message: '自動完成時間目前鎖定 30 分鐘' })}><span>自動完成</span><strong>30 分鐘</strong></button><button onClick={() => actions.navigate('soldout')}><span>售罄管理</span><strong>{selectors.soldOutCount}</strong></button><button onClick={() => actions.navigate('reprint')}><span>打印管理</span><strong>{Object.values(state.printJobs).length}</strong></button></div></Panel> : null}
+      {view === 'soldout' ? <Panel title="售罄管理" subtitle={`${controller.soldOutCount} 款不可售 · 目前切換只屬 SMT 本機試運行`}>
+        <div className="warning-box page-warning">正式 availability 寫入必須新增 Worker endpoint；本頁不會直接越權寫 Firebase。</div>
+        <div className="product-admin-grid">{Object.values(products).map((product) => <article key={product.id} className={product.availability !== 'available' ? 'sold' : ''}><div><strong>{product.code} {product.name}</strong><p>{product.category}</p></div><button className={`toggle ${product.availability !== 'available' ? 'on' : ''}`} onClick={() => actions.toggleSoldOut(product.id)} aria-pressed={product.availability !== 'available'}><span />{product.availability === 'available' ? '可售' : '售罄'}</button></article>)}</div>
+      </Panel> : null}
+
+      {view === 'reprint' ? <Panel title="重印" subtitle="只提交 authenticated reprint request；打印目的地由 SMT 後端控制">
+        <div className="order-list">{networkOrders.filter((order) => order.status !== 'cancelled').map((order) => <article className="list-card" key={order.id}><div><strong>{order.orderNo}</strong><p>{sourceLabel(order.source)} · {statusLabel(order.status)} · HK${order.total}</p></div><span>{new Date(order.updatedAt).toLocaleTimeString('zh-HK')}</span><button className="button primary" onClick={() => setReprintOrder(order)}>要求重印</button></article>)}</div>
+      </Panel> : null}
+
+      {view === 'more' ? <Panel title="更多／系統" subtitle="正式發佈、裝置、Catalog、打印與風險狀態">
+        <div className="settings-dashboard">
+          <InfoCard label="Runtime" value={config.mode.toUpperCase()} detail={config.orderApiBaseUrl || 'API URL 未設定'} />
+          <InfoCard label="裝置" value={device.deviceNumber || '未綁定'} detail={device.deviceId} />
+          <InfoCard label="Catalog" value={`${Object.keys(products).length} 款`} detail={`manifest ${String(controller.catalogMeta.checksum || '未取得').slice(0, 14)}`} />
+          <InfoCard label="Print jobs" value={String(countNested(printJobs))} detail="只讀 Firebase 狀態；真實打印由 Android bridge" />
+          <InfoCard label="Firebase" value={health.firebase} detail={health.lastMessage} />
+          <InfoCard label="登入帳戶" value={profile?.displayName || 'Demo'} detail={`${profile?.role || 'demo'} · ${user?.email || 'local'}`} />
+        </div>
+        <div className="settings-actions"><button className="button secondary" onClick={() => actions.setRuntimeMode('demo')}>切換 Demo</button><button className="button secondary" onClick={() => actions.setRuntimeMode('staging')}>切換 Staging</button><button className="button secondary" onClick={() => actions.setView('reprint')}>重印管理</button><button className="button secondary" onClick={() => actions.setView('soldout')}>售罄管理</button>{config.mode !== 'demo' ? <button className="button danger" onClick={() => void actions.logout()}>登出</button> : null}</div>
+      </Panel> : null}
     </main>
 
-    <nav className="shortcut-bar"><div className="shortcut-grid">{shortcuts.map(shortcut => { const left = badgeFor(shortcut.key, 'left'); const right = badgeFor(shortcut.key, 'right'); const active = shortcut.key === state.ui.view; return <button key={shortcut.key} className={`${shortcut.fixed ? 'fixed ' : ''}${active ? 'active' : ''}`} onClick={() => navigate(shortcut.key)}>{left ? <i className="badge badge-left">{left}</i> : null}{right ? <i className="badge badge-right">{right}</i> : null}<span>{shortcut.glyph}</span><strong>{shortcut.label}</strong></button>; })}</div></nav>
+    <nav className="bottom-nav" aria-label="SMT 功能導航">{navItems.map((item) => {
+      const badge = item.key === 'workbench' ? controller.newNetworkCount : item.key === 'dinein' ? controller.occupiedTables : item.key === 'hold' ? holds.length : item.key === 'pending' ? pendingIssues.length : item.key === 'soldout' ? controller.soldOutCount : 0;
+      return <button key={item.key} className={view === item.key ? 'active' : ''} onClick={() => actions.setView(item.key)}><span>{item.glyph}</span><strong>{item.label}</strong>{badge ? <Badge value={badge} /> : null}</button>;
+    })}</nav>
 
-    {editMode && editingItem && editingProduct ? <div className={editMode === 'quick' ? 'quick-overlay' : 'overlay'} onClick={() => setEditMode(null)}><section className={editMode === 'quick' ? 'quick-card' : 'detail-card'} onClick={event => event.stopPropagation()}><header><div><small>{editMode === 'quick' ? '快速修改' : '商品完整詳情'}</small><h3>{editingProduct.code} {editingProduct.name}</h3></div><button onClick={() => setEditMode(null)}>×</button></header><div className={editMode === 'quick' ? 'quick-rows' : 'detail-columns'}>{editMode === 'quick' ? <><button onClick={() => setEditMode('detail')}>完整詳情 <span>›</span></button><label><span>商品備註</span><input value={draftNote} onChange={event => setDraftNote(event.target.value)} placeholder="直接輸入" /></label></> : <><div className="detail-photo">{editingProduct.code}</div><div className="detail-options"><button>主食／飯團 <span>›</span></button><button>小食 <span>›</span></button><button>飲品 <span>›</span></button><textarea value={draftNote} onChange={event => setDraftNote(event.target.value)} placeholder="商品備註" /></div><aside><h3>目前選擇</h3><p>{editingItem.summary ?? '未有額外選項'}</p><strong>HK${editingItem.unitPrice * editingItem.qty}</strong></aside></>}</div><footer><button className="primary" onClick={saveEdit}>完成</button><button onClick={() => { actions.removeCartItem(editingItem.id); setEditMode(null); }}>刪除</button></footer></section></div> : null}
-    {state.ui.modal === 'note' ? <Modal title="整單備註" onClose={actions.closeModal}><textarea className="modal-textarea" value={draftNote} onChange={event => setDraftNote(event.target.value)} /><div className="quick-notes">{['全部醬汁另上', '客人趕時間', '分開包裝', '到店致電'].map(note => <button key={note} onClick={() => setDraftNote(current => current ? `${current} · ${note}` : note)}>{note}</button>)}</div><button className="primary" onClick={() => { actions.setOrderNote(draftNote); actions.closeModal(); }}>完成</button></Modal> : null}
-    {state.ui.modal === 'pendingBatch' ? <Modal title="尚有待補項目" onClose={actions.closeModal}><p>請先處理 {selectors.openPendingCount} 項待補，完成後才可收款。</p><button className="primary" onClick={() => actions.navigate('pending')}>前往處理</button></Modal> : null}
-    {paymentTarget ? <Modal title={paymentTarget.kind === 'order' ? '收款' : `${state.tableSessions[paymentTarget.tableId]?.tableName} 付款`} onClose={() => setPaymentTarget(null)}><div className="payment-modal"><p>本次應收 <strong>HK${paymentTarget.amount}</strong></p><label>本次收款金額<input type="number" min="0" max={paymentTarget.amount} value={paymentAmount} onChange={event => setPaymentAmount(event.target.value)} /></label><div className="settings-grid">{paymentMethods.map(method => <button key={method.key} onClick={() => finishPayment(method.key)}>{method.label}</button>)}</div></div></Modal> : null}
-    {confirmClear ? <Modal title="清空購物車" onClose={() => setConfirmClear(false)}><p>目前共有 {selectors.cartQty} 件，總額 HK${selectors.cartTotal}。</p><div className="table-actions"><button onClick={() => { createHold(); setConfirmClear(false); }}>掛單後清空</button><button onClick={() => { actions.clearCart(); setConfirmClear(false); }}>直接清空</button></div></Modal> : null}
-    {lookupOpen ? <Modal title="查單" onClose={() => setLookupOpen(false)}><div className="search-row"><input value={lookupText} onChange={event => setLookupText(event.target.value)} placeholder="輸入單號、來源或枱號" /><button onClick={() => actions.dispatch({ type: 'SHOW_TOAST', kind: 'info', message: lookupText ? `正在查找：${lookupText}` : '請先輸入查詢內容' })}>搜尋</button></div></Modal> : null}
-    {state.ui.toast ? <button className="floating-note" onClick={() => actions.dispatch({ type: 'CLEAR_TOAST' })}>{state.ui.toast.message}</button> : null}
+    {configuring ? <ProductConfigurator product={configuring.product} catalog={products} item={configuring.item} onClose={() => setConfiguring(undefined)} onSave={(selections, note, existingId) => { actions.addConfigured(configuring.product, selections, note, existingId); setConfiguring(undefined); }} /> : null}
+    {checkoutOpen ? <CheckoutModal items={cart} products={products} total={total} pendingCount={pendingIssues.length} source={source} mode={orderMode} tableId={tableId} tables={tables} runtimeMode={config.mode} busy={busyKey === 'submit-order'} onClose={() => setCheckoutOpen(false)} onSubmit={(method, name, phone, time) => actions.submitOrder(method, name, phone, time).then(() => undefined)} /> : null}
+    {clearConfirm ? <ConfirmDialog title="清空購物車" message={`目前共有 ${cartQty} 件，總額 HK$${total}。清空後不可復原。`} danger confirmLabel="確認清空" onClose={() => setClearConfirm(false)} onConfirm={() => { actions.clearCart(); setClearConfirm(false); }} /> : null}
+    {splitTable ? <TableSplitModal table={splitTable} selectedIds={splitItemIds} method={splitMethod} onToggle={(id) => setSplitItemIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])} onMethod={setSplitMethod} onClose={() => setSplitTable(undefined)} onPay={() => { actions.payTableItems(splitTable.id, splitItemIds, splitMethod); setSplitTable(undefined); setSplitItemIds([]); }} /> : null}
+    {reprintOrder ? <Modal title={`要求重印 ${reprintOrder.orderNo}`} subtitle="重印會建立新批次，不會覆蓋原打印紀錄" onClose={() => setReprintOrder(undefined)} size="small" footer={<><button className="button secondary" onClick={() => setReprintOrder(undefined)}>取消</button><button className="button primary" disabled={!reprintReason.trim() || busyKey === `reprint:${reprintOrder.id}`} onClick={() => void run(async () => { await actions.requestReprint(reprintOrder.id, reprintReason); setReprintOrder(undefined); })}>提交重印</button></>}><label className="field"><span>重印原因</span><textarea value={reprintReason} onChange={(event) => setReprintReason(event.target.value)} maxLength={200} /></label><p className="inline-note">SMM／SMT 只提交請求；實際 print jobs 仍由 SMT-controlled backend 建立。</p></Modal> : null}
+    {toast ? <button className={`toast toast-${toast.kind}`} onClick={actions.clearToast}>{toast.message}</button> : null}
   </div>;
 }
 
-function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
-  return <section className="panel-view"><header><div><small>磨飯 SMT</small><h1>{title}</h1><p>{subtitle}</p></div></header><div className="panel-content">{children}</div></section>;
+function ProductCard({ product, onOpen, onDetail }: { product: Product; onOpen: () => void; onDetail: () => void }) {
+  const sold = product.availability !== 'available';
+  return <article className={`product-card ${sold ? 'sold' : ''}`}><button className="product-main" onClick={onOpen} disabled={sold}><div className="product-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.code}</span>}</div><div className="product-copy"><small>{product.category}</small><strong>{product.name}</strong><b>HK${product.price}</b></div></button><button className="product-detail-button" onClick={onDetail} disabled={sold}>{sold ? '售罄' : requiresConfiguration(product) ? '選項' : '詳情'}</button></article>;
 }
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return <div className="overlay"><section className="modal-card"><header><h2>{title}</h2><button onClick={onClose}>×</button></header><div className="modal-body">{children}</div></section></div>;
+
+function OrderCard({ order, busy, onAccept, onAdvance, onReprint }: { order: NetworkOrder; busy: boolean; onAccept: () => void; onAdvance: () => void; onReprint: () => void }) {
+  const canAdvance = ['accepted', 'preparing', 'ready'].includes(order.status);
+  return <article className={`order-card status-${order.status}`}><header><div><strong>{order.orderNo}</strong><span>{sourceLabel(order.source)}</span></div><b>HK${order.total}</b></header><div className="order-meta"><span>{order.itemCount} 件</span><span>{statusLabel(order.status)}</span><span>{new Date(order.createdAt).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' })}</span>{order.issueCount ? <span className="danger-text">異常 {order.issueCount}</span> : null}</div><footer>{order.status === 'pending' ? <button className="button primary" disabled={busy} onClick={onAccept}>接單</button> : canAdvance ? <button className="button primary" disabled={busy} onClick={onAdvance}>{order.status === 'accepted' ? '開始處理' : order.status === 'preparing' ? '完成／可取餐' : '客人已取餐'}</button> : <span />}<button className="button ghost" onClick={onReprint}>重印</button></footer></article>;
 }
+
+function TableDetail({ table, onBack, onAdd, onSplit }: { table: TableSession; onBack: () => void; onAdd: () => void; onSplit: () => void }) {
+  const unpaid = table.lineItems.filter((line) => !line.paid);
+  const total = table.lineItems.reduce((sum, line) => sum + line.amount, 0);
+  const paid = table.lineItems.filter((line) => line.paid).reduce((sum, line) => sum + line.amount, 0);
+  return <div className="table-detail"><button className="text-button" onClick={onBack}>‹ 返回枱號</button><header><div><h2>{table.tableName}</h2><p>{table.status === 'occupied' ? '使用中' : table.status}</p></div><div className="table-totals"><span>總額 <b>HK${total}</b></span><span className="paid">已付 <b>HK${paid}</b></span><span className="unpaid">未付 <b>HK${total - paid}</b></span></div></header><div className="table-lines">{table.lineItems.map((line) => <article key={line.id} className={line.paid ? 'paid' : ''}><span>{line.label}</span><b>HK${line.amount}</b><small>{line.paid ? '已付款' : '未付款'}</small></article>)}</div><div className="table-action-row"><button className="button primary" onClick={onAdd}>追加點單</button><button className="button secondary" disabled={!unpaid.length} onClick={onSplit}>按商品拆單／付款</button></div></div>;
+}
+
+function TableSplitModal({ table, selectedIds, method, onToggle, onMethod, onPay, onClose }: { table: TableSession; selectedIds: string[]; method: PaymentMethod; onToggle: (id: string) => void; onMethod: (method: PaymentMethod) => void; onPay: () => void; onClose: () => void }) {
+  const unpaid = table.lineItems.filter((line) => !line.paid);
+  const amount = unpaid.filter((line) => selectedIds.includes(line.id)).reduce((sum, line) => sum + line.amount, 0);
+  return <Modal title={`${table.tableName} 按商品拆單`} subtitle="每件商品只可分配到一張付款單，不使用平均除人數" onClose={onClose} size="large" footer={<><button className="button secondary" onClick={onClose}>取消</button><button className="button primary" disabled={!selectedIds.length} onClick={onPay}>收款 HK${amount}</button></>}><div className="split-items">{unpaid.map((line) => <button key={line.id} className={selectedIds.includes(line.id) ? 'active' : ''} onClick={() => onToggle(line.id)}><span>{line.label}</span><b>HK${line.amount}</b><small>{selectedIds.includes(line.id) ? '已選入本次付款' : '未選擇'}</small></button>)}</div><label className="field"><span>付款方式</span><select value={method} onChange={(event) => onMethod(event.target.value as PaymentMethod)}><option value="cash">現金</option><option value="fps">FPS</option><option value="payme">PayMe</option><option value="alipay">Alipay</option><option value="wechat_pay">WeChat Pay</option></select></label><div className="checkout-total"><span>本次收款</span><strong>HK${amount}</strong></div></Modal>;
+}
+
+function Panel({ title, subtitle, actions, children }: { title: string; subtitle: string; actions?: ReactNode; children: ReactNode }) {
+  return <section className="panel"><header className="panel-header"><div><small>磨飯 SMT</small><h1>{title}</h1><p>{subtitle}</p></div>{actions ? <div>{actions}</div> : null}</header><div className="panel-body">{children}</div></section>;
+}
+function EmptyState({ icon, title, message }: { icon: string; title: string; message: string }) { return <div className="empty-state"><span>{icon}</span><strong>{title}</strong><p>{message}</p></div>; }
+function HealthChip({ label, status }: { label: string; status: string }) { return <span className={`health-chip health-${status}`}><i />{label}</span>; }
+function Badge({ value }: { value: number }) { return value ? <i className="badge">{value > 99 ? '99+' : value}</i> : null; }
+function InfoCard({ label, value, detail }: { label: string; value: string; detail: string }) { return <article className="info-card"><small>{label}</small><strong>{value}</strong><p>{detail}</p></article>; }
+function sourceLabel(source: OrderSource) { return ({ smt: 'SMT', walk_in: '現場', whatsapp: 'WhatsApp', phone: '電話', customer_web: '網站', customer_app: 'App', foodpanda: 'Foodpanda', keeta: 'Keeta' } as Record<OrderSource, string>)[source]; }
+function statusLabel(status: string) { return ({ pending: '待接單', accepted: '已接單', preparing: '處理中', ready: '完成／可取餐', completed: '已取餐', cancelled: '已取消', abnormal: '異常' } as Record<string, string>)[status] || status; }
+function countNested(value: unknown): number { if (!value || typeof value !== 'object') return 0; return Object.values(value as Record<string, unknown>).reduce((sum, child) => sum + (child && typeof child === 'object' ? Object.keys(child as Record<string, unknown>).length : 1), 0); }
