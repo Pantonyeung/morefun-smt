@@ -153,7 +153,7 @@ export interface RuntimeHealth {
   firebase: 'idle' | 'connecting' | 'online' | 'offline' | 'error';
   api: 'idle' | 'checking' | 'ready' | 'disabled' | 'offline' | 'error';
   auth: 'signed_out' | 'signed_in' | 'forbidden';
-  realtime: 'idle' | 'online' | 'offline' | 'error';
+  realtime: 'idle' | 'connecting' | 'online' | 'offline' | 'error';
   lastMessage: string;
 }
 
