@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles.css';
 import './demo-truth.css';
+import './operations-v2.css';
+import './operations-v2';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('找不到 SMT 根節點');
