@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-07-14
+
+- 新增 `docs/ui/SMT-INTERACTION-REVIEW-V0.1.md`，逐頁整理所有按鈕、預期行為、返回路徑、狀態更新及磨飯商業規則。
+- 新增 `src/state/smtState.ts`，建立完整 SMT 互動狀態模型基礎。
+- 狀態模型包括 Navigation、UI、Current Order、Cart、Hold、Pending、Table Session、Workbench、Payment、Print Job、Availability、System Health、Settings 及 Audit Log。
+- 新增統一 reducer actions、初始假資料及角標／總額／待補／堂食／異常等 selector。
+- 本階段先完成狀態模型骨架；下一階段把現有 `App.tsx` 所有局部 `useState` 逐步遷移到統一 reducer，並逐頁接通所有互動。
+
 ## 0.4.0 — 2026-07-14
 
 - 底部固定加入「點單」入口，任何功能頁都可直接返回主開單介面。
