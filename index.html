@@ -5,9 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f7f4ee" />
     <title>磨飯 SMT</title>
+    <style>
+      #startup-status {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f3efe8;
+        color: #2d2a26;
+        font: 700 18px/1.5 system-ui, -apple-system, "Noto Sans TC", sans-serif;
+        text-align: center;
+      }
+      #startup-status small { display: block; margin-top: 8px; font-weight: 500; color: #756b61; }
+    </style>
   </head>
   <body>
+    <div id="startup-status">磨飯 SMT 載入中…<small>如果此畫面一直停留，代表前端程式未成功載入。</small></div>
     <div id="root"></div>
+    <script>
+      window.addEventListener('error', function (event) {
+        var el = document.getElementById('startup-status');
+        if (el) el.innerHTML = 'SMT 啟動失敗<small>' + (event.message || '未知錯誤') + '</small>';
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        var el = document.getElementById('startup-status');
+        if (el) el.innerHTML = 'SMT 啟動失敗<small>' + String(event.reason || '未知錯誤') + '</small>';
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
