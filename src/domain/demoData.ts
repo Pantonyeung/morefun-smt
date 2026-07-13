@@ -1,7 +1,7 @@
 import type { NetworkOrder, Product, TableSession } from './types';
 import { inferRuleKind } from './businessRules';
 
-const seed = [
+const seed: Array<[string, string, number, string, string[]]> = [
   ['F1', '招牌雞扒紫米飯團餐', 51, '紫米套餐', ['雞']],
   ['F2', '鹽燒鯖魚紫米飯團餐', 50, '紫米套餐', ['魚']],
   ['F3', '香煎豬扒紫米飯團餐', 52, '紫米套餐', ['豬']],
@@ -19,7 +19,7 @@ const seed = [
   ['D02', '凍檸檬茶', 20, '飲品', ['飲品']],
   ['D03', '玄米冷泡茶', 22, '飲品', ['飲品']],
   ['D04', '手打檸檬茶', 25, '飲品', ['飲品']],
-] as const;
+];
 
 export const demoProducts: Record<string, Product> = Object.fromEntries(seed.map(([code, name, price, category, tags], index) => {
   const id = `demo-${index + 1}`;
