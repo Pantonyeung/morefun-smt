@@ -1,0 +1,127 @@
+/* SMT bottom navigation correction V0.5.1
+   - Same 64px height as top status bar
+   - Ten compact entries in one row
+   - Avoid unsupported symbol-font mojibake
+   - Selected entry uses the checkout red */
+.smt-shell {
+  grid-template-rows: 64px minmax(0, 1fr) 64px !important;
+}
+
+.shortcut-bar {
+  height: 64px !important;
+  min-height: 64px !important;
+  display: block !important;
+  padding: 5px 10px !important;
+  border-top: 1px solid #e2d9cf;
+  background: #f4efe8;
+  overflow: hidden;
+}
+
+.shortcut-grid {
+  height: 54px;
+  display: grid !important;
+  grid-template-columns: repeat(10, minmax(70px, 1fr)) !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+
+.shortcut-grid > button {
+  min-width: 0;
+  height: 54px;
+  border: 1px solid #ddd4ca !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #39342f !important;
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  align-content: center !important;
+  gap: 5px !important;
+  padding: 5px 7px !important;
+  box-shadow: none !important;
+}
+
+/* Hide symbol-font glyphs that rendered as mojibake on some Android devices. */
+.shortcut-grid > button > span {
+  width: 22px;
+  height: 22px;
+  display: grid !important;
+  place-items: center;
+  overflow: hidden;
+  font-size: 0 !important;
+  line-height: 1;
+  border-radius: 7px;
+  background: #f1ece6;
+  color: #756b62;
+}
+
+.shortcut-grid > button > span::before {
+  font-size: 13px;
+  font-weight: 900;
+  font-family: "Noto Sans TC", system-ui, sans-serif;
+}
+.shortcut-grid > button:nth-child(1) > span::before { content: "點"; }
+.shortcut-grid > button:nth-child(2) > span::before { content: "掛"; }
+.shortcut-grid > button:nth-child(3) > span::before { content: "補"; }
+.shortcut-grid > button:nth-child(4) > span::before { content: "堂"; }
+.shortcut-grid > button:nth-child(5) > span::before { content: "工"; }
+.shortcut-grid > button:nth-child(6) > span::before { content: "註"; }
+.shortcut-grid > button:nth-child(7) > span::before { content: "售"; }
+.shortcut-grid > button:nth-child(8) > span::before { content: "印"; }
+.shortcut-grid > button:nth-child(9) > span::before { content: "查"; }
+.shortcut-grid > button:nth-child(10) > span::before { content: "多"; }
+
+.shortcut-grid > button > strong {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shortcut-grid > button:hover {
+  transform: translateY(-1px);
+  border-color: #ef332d !important;
+}
+
+.shortcut-grid > button.active,
+.shortcut-grid > button.active:hover {
+  background: #ef332d !important;
+  border-color: #ef332d !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(239, 51, 45, 0.22) !important;
+}
+.shortcut-grid > button.active > span {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+}
+
+.shortcut-grid .badge {
+  top: 2px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  padding: 0 4px;
+  font-size: 9px !important;
+  border: 2px solid #fff;
+  z-index: 2;
+}
+.shortcut-grid .badge-left { left: 2px !important; }
+.shortcut-grid .badge-right { right: 2px !important; }
+.shortcut-grid > button.active .badge { border-color: #ef332d; }
+
+/* All overlays and floating controls must stop above the compact 64px nav. */
+.overlay { inset: 64px 0 64px !important; }
+.floating-note { bottom: 76px !important; }
+
+@media (max-width: 1180px) {
+  .shortcut-grid {
+    grid-template-columns: repeat(10, minmax(64px, 1fr)) !important;
+  }
+  .shortcut-grid > button {
+    grid-template-columns: 20px minmax(0, 1fr);
+    padding-inline: 5px !important;
+  }
+  .shortcut-grid > button > strong { font-size: 11px; }
+}
