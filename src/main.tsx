@@ -13,3 +13,9 @@ ReactDOM.createRoot(rootElement).render(
 );
 
 document.getElementById('startup-status')?.remove();
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('SMT service worker registration failed', error));
+  });
+}
