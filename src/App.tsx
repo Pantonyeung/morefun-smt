@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 type ProductType = '飯團' | '便當' | '小食' | '飲品';
 type QuickTag = '全部' | '雞' | '豬' | '魚' | '芝士' | '辣' | '素';
+type ChoiceRole = 'riceBall' | 'snack' | 'drink';
 
 type Product = {
   id: string;
@@ -19,7 +20,6 @@ type CartItem = {
   riceBall?: Product;
   snack?: Product;
   drink?: Product;
-  note?: string;
 };
 
 const products: Product[] = [
@@ -42,7 +42,7 @@ const products: Product[] = [
 const categories: ProductType[] = ['飯團', '便當', '小食', '飲品'];
 const quickTags: QuickTag[] = ['全部', '雞', '豬', '魚', '芝士', '辣', '素'];
 
-function App() {
+export default function App() {
   const [category, setCategory] = useState<ProductType>('飯團');
   const [globalTag, setGlobalTag] = useState<QuickTag>('全部');
   const [cart, setCart] = useState<CartItem[]>([
@@ -51,56 +51,47 @@ function App() {
       product: products[0],
       qty: 1,
       riceBall: products[0],
-      snack: products.find((p) => p.id === 's1'),
-      drink: products.find((p) => p.id === 'd1'),
+      snack: products.find((item) => item.id === 's1'),
+      drink: products.find((item) => item.id === 'd1'),
     },
   ]);
   const [editingId, setEditingId] = useState<string | null>('cart-1');
-  const [choiceRole, setChoiceRole] = useState<'riceBall' | 'snack' | 'drink' | null>(null);
+  const [choiceRole, setChoiceRole] = useState<ChoiceRole | null>(null);
   const [localTag, setLocalTag] = useState<QuickTag>('全部');
 
   const visibleProducts = useMemo(() => {
-    return products.filter((product) => {
-      const categoryMatch = product.type === category;
-      const tagMatch = globalTag === '全部' || product.tags.includes(globalTag);
-      return categoryMatch && tagMatch;
-    });
+    if (globalTag !== '全部') {
+      return products.filter((product) => product.tags.includes(globalTag));
+    }
+    return products.filter((product) => product.type === category);
   }, [category, globalTag]);
 
   const editingItem = cart.find((item) => item.id === editingId) ?? null;
-
   const candidateType: ProductType | null =
     choiceRole === 'riceBall' ? '飯團' : choiceRole === 'snack' ? '小食' : choiceRole === 'drink' ? '飲品' : null;
 
   const candidates = useMemo(() => {
     if (!candidateType) return [];
     return products.filter((product) => {
-      const poolMatch = product.type === candidateType;
-      const tagMatch = localTag === '全部' || product.tags.includes(localTag);
-      return poolMatch && tagMatch;
+      const isInCurrentPool = product.type === candidateType;
+      const matchesTag = localTag === '全部' || product.tags.includes(localTag);
+      return isInCurrentPool && matchesTag;
     });
   }, [candidateType, localTag]);
 
   const addProduct = (product: Product) => {
-    setCart((current) => [
-      ...current,
-      { id: `cart-${Date.now()}`, product, qty: 1 },
-    ]);
+    setCart((current) => [...current, { id: `cart-${Date.now()}`, product, qty: 1 }]);
   };
 
   const updateQty = (id: string, delta: number) => {
-    setCart((current) =>
-      current
-        .map((item) => (item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item))
-        .filter((item) => item.qty > 0),
-    );
+    setCart((current) => current
+      .map((item) => item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item)
+      .filter((item) => item.qty > 0));
   };
 
   const chooseCandidate = (product: Product) => {
     if (!editingId || !choiceRole) return;
-    setCart((current) =>
-      current.map((item) => (item.id === editingId ? { ...item, [choiceRole]: product } : item)),
-    );
+    setCart((current) => current.map((item) => item.id === editingId ? { ...item, [choiceRole]: product } : item));
     setChoiceRole(null);
     setLocalTag('全部');
   };
@@ -111,21 +102,13 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
-          <strong>磨飯 SMT</strong>
-          <span>單號 SMT-0001</span>
-        </div>
-        <div className="status-group">
-          <span>網絡正常</span><span>API 正常</span><span>打印正常</span><button>更多</button>
-        </div>
+        <div><strong>磨飯 SMT</strong><span>單號 SMT-0001</span></div>
+        <div className="status-group"><span>網絡正常</span><span>API 正常</span><span>打印正常</span><button>更多</button></div>
       </header>
 
       <main className="workspace">
         <section className="cart-panel">
-          <div className="mode-tabs">
-            <button className="active">開單</button><button>堂食</button><button>工作台</button>
-          </div>
-
+          <div className="mode-tabs"><button className="active">開單</button><button>堂食</button><button>工作台</button></div>
           <div className="cart-list">
             {cart.map((item, index) => (
               <article className={`cart-item ${editingId === item.id ? 'editing' : ''}`} key={item.id}>
@@ -139,33 +122,27 @@ function App() {
                   {item.drink && <span>飲品：{item.drink.name}</span>}
                 </div>
                 <div className="qty-row">
-                  <button onClick={() => updateQty(item.id, -1)}>−</button><strong>{item.qty}</strong><button onClick={() => updateQty(item.id, 1)}>＋</button>
-                  <b>${item.product.price * item.qty}</b>
+                  <button onClick={() => updateQty(item.id, -1)}>−</button><strong>{item.qty}</strong><button onClick={() => updateQty(item.id, 1)}>＋</button><b>${item.product.price * item.qty}</b>
                 </div>
               </article>
             ))}
           </div>
-
-          <div className="cart-actions">
-            <button>掛單／取單</button><button>補選／重組<small>處理整張單</small></button>
-          </div>
-          <div className="checkout-bar">
-            <span>{totalQty} 件</span><strong>${total}</strong><button>收款</button>
-          </div>
+          <div className="cart-actions"><button>掛單／取單</button><button>補選／重組<small>處理整張單</small></button></div>
+          <div className="checkout-bar"><span>{totalQty} 件</span><strong>${total}</strong><button>收款</button></div>
         </section>
 
         <section className="product-panel">
           <div className="category-row">
-            {categories.map((item) => <button key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}
+            {categories.map((item) => <button key={item} className={category === item && globalTag === '全部' ? 'active' : ''} onClick={() => { setCategory(item); setGlobalTag('全部'); }}>{item}</button>)}
           </div>
           <div className="quick-find" aria-label="全店快找">
-            <span>快找</span>
+            <span>全店快找</span>
             {quickTags.map((tag) => <button key={tag} className={globalTag === tag ? 'active' : ''} onClick={() => setGlobalTag(tag)}>{tag}</button>)}
           </div>
           <div className="product-grid">
             {visibleProducts.map((product) => (
               <button className="product-card" key={product.id} onClick={() => addProduct(product)}>
-                <span className="product-code">{product.code}</span>
+                <span className="product-code">{product.code}</span><small className="product-type">{product.type}</small>
                 <strong>{product.name}</strong><b>${product.price}</b><small>按一下直接加入</small>
               </button>
             ))}
@@ -205,5 +182,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
