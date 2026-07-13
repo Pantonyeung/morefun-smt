@@ -1,38 +1,94 @@
-# MoreFun SMT
+# MoreFun SMT V1
 
-磨飯 SMT（Store Management Terminal）網頁原型與 Android APK 前端專案。
+磨飯 SMT（Store Management Terminal）獨立 Web／PWA 前端，目標裝置為 Sunmi T2s 橫屏。Customer Web 不在本 repository 內修改。
 
-## 專案定位
+## V1 已完成
 
-- 獨立於 `morefun-ordering-web` Customer Web。
-- 先以可操作網頁原型驗證 UI、流程與高峰操作。
-- 後續接入 Firebase RTDB、Cloudflare Worker、Staff／Sync API 與 Android 原生打印服務。
-- Customer Web V42DY 不在本 repository 內修改。
+- Firebase Email/Password 登入及 `staffProfiles` 角色驗證
+- SMT device ID／`SMT-01` 裝置編號
+- Firebase RTDB Catalog、SMT pending／active queue、orders、print jobs realtime read
+- Cloudflare Worker staff order、接單、狀態、重印、device register／heartbeat adapter
+- Firebase 118 商品 catalog normalization
+- 磨飯點單規則：便當飯底、走蛋、飯量、紫米套餐、飲品升級、沙律醬汁、小食雙倍醬、飲品冰甜、飯團同價層雙拼
+- 待補檢查，未完成不可收款
+- 訂單來源：現場、WhatsApp、電話、網站、App、Foodpanda、Keeta
+- 工作台、掛單、查單、售罄試運行、重印請求、堂食按商品拆單
+- Demo／Staging／Live 明確模式
+- TypeScript、Vitest、GitHub Actions build gate
+- 已移除 MutationObserver／DOM injection 堂食 patch
 
-## V0.1 範圍
+## 重要安全邊界
 
-- 快速開單主介面
-- 購物車快速修改卡
-- 類內快找（只篩選目前候選池）
-- 全店快找與類內快找邏輯隔離
-- 假資料操作原型
+- 正式 order、接單、狀態及重印只經 Cloudflare Worker。
+- SMT 不直接寫 `ordersV1` 或 `printJobsV1`。
+- Worker `ORDER_API_ENABLED=false` 時，畫面顯示阻塞並保留購物車，不會假成功。
+- Firebase／Cloudflare secrets 不可提交到 GitHub。
+- Firebase Web App config 經 Cloudflare Pages Environment Variables 注入。
+- 真實打印由 Android native bridge／printer agent 執行；瀏覽器只讀 print status。
 
-## 開發方向
+## 模式
 
-- React + Vite + TypeScript
-- Sunmi T2s 橫屏優先
-- 平板／手機備援操作
-- 後續使用 Capacitor 封裝 Android APK
-- 打印由 Android 原生服務／橋接處理，不由瀏覽器直接控制
+### Demo
 
-## 硬性邊界
+```text
+VITE_RUNTIME_MODE=demo
+```
 
-- 不修改 `Pantonyeung/morefun-ordering-web`。
-- 不把 SMT route 加入 Customer Web。
-- 不在前端保存秘密或正式憑證。
-- 第一階段不寫入正式訂單、付款、退款、流水、PrintJob 或 Day Close。
-- 假資料原型確認後，才逐步接正式後端。
+只供 UI／流程驗收。商品、訂單與堂食資料保存在本機，不寫 Firebase。
 
-## 狀態
+### Staging
 
-`SMT Prototype Foundation V0.1`：Repository initialization.
+```text
+VITE_RUNTIME_MODE=staging
+VITE_ORDER_API_URL=https://<staging-worker>.workers.dev
+```
+
+接 Firebase Auth／RTDB／Worker staging。Worker 是否可寫入由 `/health` 及後端 readiness gate 決定。
+
+### Live
+
+只在以下全部通過後設定：
+
+- SMT Staff 帳戶及裝置綁定
+- Firebase Rules 已部署
+- Worker secrets 已配置
+- staging 正式測試單成功
+- 五部打印機及 Sunmi APK 真機驗收
+- 回滾測試完成
+
+## Cloudflare Pages
+
+- Repository：`Pantonyeung/morefun-smt`
+- Production branch：`main`
+- Build command：`npm run build`
+- Output directory：`dist`
+- Node：22
+- Environment Variables：參考 `.env.example`
+
+## 本機開發
+
+```bash
+npm install
+npm run dev
+npm run check
+npm test
+npm run build
+```
+
+## 已知後端 contract 缺口
+
+現有 Worker V1 可支援正式外賣 order、網絡單接收、狀態更新與重印。以下功能在 UI 已有安全試運行介面，但未完成正式後端寫入：
+
+1. `TableSession`／堂食枱號正式實體
+2. `PaymentBatch`／混合付款分項
+3. SMT availability／售罄 Worker endpoint
+4. 歷史訂單 search endpoint
+5. Android native printer bridge
+
+UI 不會直接越權寫 Firebase。這些位置會明確標示「本機試運行」或「後端 endpoint 未完成」。
+
+## Audit
+
+完整問題、30+ 優化項目與發佈邊界：
+
+`docs/SMT_V1_PRODUCTION_AUDIT_AND_DESIGN.md`
