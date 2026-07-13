@@ -4,6 +4,7 @@ import App from './App';
 import './styles.css';
 import './ui-v05.css';
 import './nav-fix.css';
+import './interaction-v061.css';
 
 const rootElement = document.getElementById('root');
 
