@@ -1,0 +1,28 @@
+name: SMT Production Trial CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [agent-smt-v1-production-trial]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install
+      - name: TypeScript check
+        run: npm run check
+      - name: Domain and API tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Verify no secrets or legacy patch imports
+        run: |
+          ! grep -R "BEGIN PRIVATE KEY" src .env.example
+          ! grep -R "DineInItemSplitPatch\|MutationObserver" src/main.tsx src/App.tsx src/hooks src/services src/domain
