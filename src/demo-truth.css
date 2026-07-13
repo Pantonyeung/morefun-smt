@@ -1,0 +1,9 @@
+.mode-demo ~ .health-chip {
+  color: #776f67;
+  background: #f1ede8;
+  border-color: #e4dcd3;
+}
+.mode-demo ~ .health-chip i {
+  background: #9a9289;
+  box-shadow: none;
+}
