@@ -173,7 +173,7 @@ export function estimateUnitPrice(product: Product, selections: CartSelections, 
   if (selections.secondRiceBallId) total += 6;
   if (selections.sauceSecondary) total += 2;
   if (selections.doubleSauce) total += 2;
-  if (selections.drinkId) total += drinkUpgrade(catalog[selections.drinkId]);
+  if (selections.drinkId) total += drinkUpgrade(catalog[selections.drinkId], product.ruleKind);
   return Math.max(0, roundMoney(total));
 }
 
@@ -246,8 +246,15 @@ function normalizeAvailability(value: unknown): ProductAvailability {
   return 'available';
 }
 
-function drinkUpgrade(product?: Product): number {
+function drinkUpgrade(product: Product | undefined, parentKind: ProductRuleKind): number {
   if (!product) return 0;
+  const explicitCandidates = [product.raw.combo_delta, product.raw.upgrade_delta, product.raw.price_delta, product.raw.set_delta];
+  for (const candidate of explicitCandidates) {
+    if (candidate === '' || candidate === null || candidate === undefined) continue;
+    const value = Number(candidate);
+    if (Number.isFinite(value)) return roundMoney(value);
+  }
+  if (parentKind === 'fixed_set' || parentKind === 'custom_set') return 0;
   const name = product.name;
   if (/手打.*檸檬|手打檸檬/.test(name)) return 10;
   if (/台式奶茶/.test(name)) return 8;
