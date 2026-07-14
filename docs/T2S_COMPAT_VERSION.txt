@@ -1,0 +1,3 @@
+MoreFun SMT T2s compatibility build: 2.0.1-t2s-compat
+Legacy WebView fallback enabled.
+Relative Capacitor asset paths enabled.
