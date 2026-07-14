@@ -1,0 +1,2 @@
+Original distributed ZIP SHA-256: fcec20767e19514063d1b5400a988a6b4512fa8769ea551daa437dcec2f7d601
+Original contained APK SHA-256: ee3f3a4b646d1601d8aee3f066cb67927aadaef9b5cff2598a52cad130fbbaf2
