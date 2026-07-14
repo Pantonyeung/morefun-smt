@@ -1,4 +1,5 @@
 import type { DeviceIdentity } from '../domain/types';
+import { createSafeId } from './safeId';
 
 const DEVICE_ID_KEY = 'morefun.smt.device_id';
 const DEVICE_NUMBER_KEY = 'morefun.smt.device_number';
@@ -6,7 +7,7 @@ const DEVICE_NUMBER_KEY = 'morefun.smt.device_number';
 export function getDeviceIdentity(): DeviceIdentity {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY) || '';
   if (!deviceId) {
-    deviceId = `smt-${crypto.randomUUID().replace(/[^a-z0-9]/gi, '').slice(0, 48)}`;
+    deviceId = createSafeId('smt-').slice(0, 52);
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return {
