@@ -1,0 +1,21 @@
+name: T2s Legacy Compatibility
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-legacy-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run ci
+      - name: Verify legacy fallback and relative assets
+        run: |
+          grep -R "nomodule" dist/index.html
+          grep -R "./assets/" dist/index.html
+          test -n "$(find dist/assets -name '*legacy*.js' -print -quit)"
