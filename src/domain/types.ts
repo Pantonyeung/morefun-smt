@@ -13,7 +13,7 @@ export interface StaffProfile { uid: string; role: 'smt' | 'admin' | 'smm' | 'pr
 export interface DeviceIdentity { surface: 'smt'; deviceId: string; deviceNumber: string; }
 export interface Product { id: string; code: string; name: string; category: string; price: number; tags: string[]; availability: ProductAvailability; ruleKind: ProductRuleKind; imageUrl?: string; tier?: 'A' | 'B' | 'C' | 'D'; raw: Record<string, unknown>; }
 export interface CartSelections { riceBase?: 'braised' | 'curry' | 'vegetable'; riceAmount?: 'normal' | 'less' | 'half' | 'more'; noEgg?: boolean; riceBallId?: string; secondRiceBallId?: string; snackId?: string; drinkId?: string; noDrink?: boolean; saucePrimary?: string; sauceSecondary?: string; doubleSauce?: boolean; ice?: 'normal' | 'less' | 'no_ice'; sweetness?: 'normal' | 'less' | 'no_sugar'; }
-export interface PendingIssue { kind: PendingKind; message: string; }
+export interface PendingIssue { kind: PendingKind; message: string; severity?: 'pending' | 'blocking' | 'reminder'; }
 export interface CartItem { id: string; productId: string; quantity: number; selections: CartSelections; note: string; estimatedUnitPrice: number; summary: string; pendingIssues: PendingIssue[]; addedAt: string; }
 export interface OrderDraft { id: string; orderNo: string; source: OrderSource; mode: OrderMode; tableId?: string; customerName: string; customerPhone: string; note: string; paymentMethod: PaymentMethod; items: CartItem[]; createdAt: string; updatedAt: string; }
 export interface HoldOrder { id: string; title: string; draft: OrderDraft; createdAt: string; }
