@@ -1,0 +1,1 @@
+This branch must not be distributed until both web CI and Android APK workflows succeed.
