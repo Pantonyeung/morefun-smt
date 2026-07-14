@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createClientId } from './id';
+import { createClientId, installRandomUuidFallback } from './id';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => vi.unstubAllGlobals());
 
 describe('createClientId', () => {
   it('uses randomUUID when the runtime provides it', () => {
@@ -18,5 +18,24 @@ describe('createClientId', () => {
     expect(first).toMatch(/^cart-/);
     expect(second).toMatch(/^cart-/);
     expect(first).not.toBe(second);
+    vi.restoreAllMocks();
+  });
+});
+
+describe('installRandomUuidFallback', () => {
+  it('adds randomUUID for older Android WebViews without replacing existing crypto fields', () => {
+    const cryptoObject = { getRandomValues: () => 'kept' };
+    vi.stubGlobal('crypto', cryptoObject);
+    installRandomUuidFallback();
+    expect(globalThis.crypto.getRandomValues).toBe(cryptoObject.getRandomValues);
+    expect(typeof globalThis.crypto.randomUUID).toBe('function');
+    expect(globalThis.crypto.randomUUID()).toMatch(/^[a-z0-9-]+$/i);
+  });
+
+  it('keeps the native randomUUID implementation when available', () => {
+    const native = () => 'native-uuid';
+    vi.stubGlobal('crypto', { randomUUID: native });
+    installRandomUuidFallback();
+    expect(globalThis.crypto.randomUUID).toBe(native);
   });
 });
