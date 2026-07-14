@@ -12,6 +12,7 @@ import {
 import { get, getDatabase, onValue, ref, type Database, type Unsubscribe } from 'firebase/database';
 import type { FirebaseUserIdentity, StaffProfile } from '../domain/types';
 import type { SmtRuntimeConfig } from '../runtime/config';
+import { normalizeSmtCatalogSnapshot } from './smtCatalogGatewayAdapter';
 
 export interface FirebaseGateway {
   auth: Auth;
@@ -58,7 +59,11 @@ export function createFirebaseGateway(config: SmtRuntimeConfig): FirebaseGateway
       return onValue(ref(database, `staffProfiles/${uid}`), (snapshot) => callback(snapshot.exists() ? normalizeStaffProfile(uid, snapshot.val()) : null));
     },
     subscribeCatalog(callback, onError) {
-      return onValue(ref(database, 'public/catalogV1'), (snapshot) => callback(snapshot.val() ?? {}), (error) => onError?.(error));
+      return onValue(
+        ref(database, 'public/catalogV1'),
+        (snapshot) => callback(normalizeSmtCatalogSnapshot(snapshot.val() ?? {})),
+        (error) => onError?.(error),
+      );
     },
     subscribePath(path, callback, onError) {
       return onValue(ref(database, path), (snapshot) => callback(snapshot.val() ?? {}), (error) => onError?.(error));
