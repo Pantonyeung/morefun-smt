@@ -6,6 +6,7 @@ import {
   updateCartItem,
 } from '../domain/businessRules';
 import type { CartItem, CartSelections, Product } from '../domain/types';
+import { classifyCompletion } from '../morefun-core/completion';
 import { Modal } from './Modal';
 
 export function ProductConfigurator({ product, catalog, item, onSave, onClose }: {
@@ -23,13 +24,17 @@ export function ProductConfigurator({ product, catalog, item, onSave, onClose }:
   const riceBalls = useMemo(() => categoryCandidates(catalog, 'rice_ball'), [catalog]);
   const snacks = useMemo(() => categoryCandidates(catalog, 'snack'), [catalog]);
   const drinks = useMemo(() => categoryCandidates(catalog, 'drink'), [catalog]);
-  const canSave = preview.pendingIssues.length === 0;
+  const completionState = classifyCompletion(preview.pendingIssues);
+  const canSave = completionState !== 'blocking_invalid';
+  const hasPending = completionState === 'pending_allowed';
 
   const patch = (value: Partial<CartSelections>) => setSelections((current) => ({ ...current, ...value }));
 
-  return <Modal title={`${product.code} ${product.name}`} subtitle="完整選項 · 金額為前端估算，送單後由 Worker 重新計價" onClose={onClose} size="wide" footer={<>
+  return <Modal title={`${product.code} ${product.name}`} subtitle="可先加入待補；付款前必須完成。金額送單後由 Worker 重新計價" onClose={onClose} size="wide" footer={<>
     <button className="button secondary" onClick={onClose}>取消</button>
-    <button className="button primary" disabled={!canSave} onClick={() => onSave(selections, note, item?.id)}>{item ? '儲存修改' : '加入購物車'} · HK${preview.estimatedUnitPrice}</button>
+    <button className="button primary" disabled={!canSave} onClick={() => onSave(selections, note, item?.id)}>
+      {item ? '儲存修改' : hasPending ? '加入並待補' : '加入購物車'} · HK${preview.estimatedUnitPrice}
+    </button>
   </>}>
     <div className="configurator-layout">
       <aside className="product-preview">
@@ -84,7 +89,11 @@ export function ProductConfigurator({ product, catalog, item, onSave, onClose }:
         <h3>目前選擇</h3>
         <p>{preview.summary}</p>
         <div className="price-row"><span>估算單價</span><strong>HK${preview.estimatedUnitPrice}</strong></div>
-        {preview.pendingIssues.length ? <div className="issue-box"><strong>尚有待補</strong>{preview.pendingIssues.map((issue) => <p key={`${issue.kind}-${issue.message}`}>{issue.message}</p>)}</div> : <div className="success-box">選項完整，可以加入購物車</div>}
+        {completionState === 'blocking_invalid'
+          ? <div className="issue-box"><strong>必須先修正</strong>{preview.pendingIssues.map((issue) => <p key={`${issue.kind}-${issue.message}`}>{issue.message}</p>)}</div>
+          : completionState === 'pending_allowed'
+            ? <div className="issue-box"><strong>可先加入待補</strong>{preview.pendingIssues.map((issue) => <p key={`${issue.kind}-${issue.message}`}>{issue.message}</p>)}</div>
+            : <div className="success-box">選項完整，可以加入購物車</div>}
       </aside>
     </div>
   </Modal>;
