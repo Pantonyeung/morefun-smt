@@ -23,8 +23,9 @@ function rewriteLabels(root: ParentNode = document) {
     button.dataset.navLabel = label || '';
   });
 
-  const workbench = root.querySelector<HTMLElement>('.panel:has(.order-list)');
-  if (workbench) workbench.classList.add('operations-order-board');
+  root.querySelectorAll<HTMLElement>('.panel').forEach((panel) => {
+    if (panel.querySelector('.order-list')) panel.classList.add('operations-order-board');
+  });
 }
 
 function attachOperationsV2() {
