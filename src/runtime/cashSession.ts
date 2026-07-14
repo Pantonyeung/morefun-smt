@@ -73,6 +73,6 @@ export function closeCashSession(session: CashSession, counts: CashCounts, nextO
   return closed;
 }
 
-export function isCashSessionOpenToday(session: CashSession | null): boolean {
+export function isCashSessionOpenToday(session: CashSession | null): session is CashSession {
   return Boolean(session && session.businessDate === businessDate() && !session.closedAt);
 }
