@@ -5,6 +5,7 @@ import { installRandomUuidFallback } from './morefun-core/id';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
+import './mobile-landscape.css';
 
 installRandomUuidFallback();
 
