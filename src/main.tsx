@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import OperationsApp from './OperationsApp';
+import { installRandomUuidFallback } from './morefun-core/id';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
+
+installRandomUuidFallback();
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
