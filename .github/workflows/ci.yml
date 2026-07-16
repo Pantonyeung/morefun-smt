@@ -1,43 +1,44 @@
-name: SMT Production Trial CI
+name: SMT CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
-  push:
-    branches: [agent-smt-v1-production-trial]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
       - name: TypeScript check
-        id: typecheck
-        continue-on-error: true
-        run: npm run check > /tmp/smt-typecheck.log 2>&1
-      - name: Upload TypeScript diagnostics
-        if: steps.typecheck.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: smt-typecheck-diagnostics
-          path: /tmp/smt-typecheck.log
-      - name: Fail on TypeScript error
-        if: steps.typecheck.outcome == 'failure'
-        run: exit 1
-      - name: Domain and API tests
+        run: npm run check
+
+      - name: Unit tests
         run: npm test
+
       - name: Production build
         run: npm run build
-      - name: Upload production build
-        uses: actions/upload-artifact@v4
-        with:
-          name: morefun-smt-dist
-          path: dist
+
       - name: Verify no secrets or legacy patch imports
         run: |
           ! grep -R "BEGIN PRIVATE KEY" src .env.example
