@@ -4,6 +4,7 @@ import OperationsApp from './OperationsApp';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
+import './final-design-lock.css';
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
