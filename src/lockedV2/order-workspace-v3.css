@@ -1,0 +1,164 @@
+/* SMT 點單頁 V3：繁體中文、高峰操作、同一排版跨 iPhone／iPad／T2s */
+
+/* 左側訂單工作區 */
+.v2-cart{
+  grid-template-rows:46px minmax(0,1fr) 42px 38px 68px;
+  border-color:color-mix(in srgb,var(--mf-line) 78%,transparent);
+  box-shadow:0 5px 16px rgba(48,34,24,.08);
+}
+.v2-cart>header{
+  padding:0 11px;
+  background:linear-gradient(180deg,var(--mf-surface),var(--mf-surface-soft));
+}
+.v2-cart>header strong{font-size:16px;letter-spacing:.01em}
+.v2-cart>header span{padding:2px 7px;border-radius:999px;background:var(--mf-surface-soft);font-weight:800}
+.v2-cart>header>b{padding:4px 7px;border-radius:7px;background:var(--mf-surface-soft)}
+.v2-cart>header>b.warning{background:#fff5df}
+
+.v2-cart-list{padding:6px;background:color-mix(in srgb,var(--mf-surface-soft) 45%,transparent)}
+.v2-cart-list article{
+  border:0;
+  border-left:3px solid transparent;
+  box-shadow:0 1px 0 var(--mf-line);
+  border-radius:8px;
+  background:var(--mf-surface);
+  padding:7px 7px 7px 5px;
+}
+.v2-cart-list article.issue{border-left-color:var(--mf-warn);background:#fffaf0}
+.v2-cart-copy strong{font-size:12px}
+.v2-cart-copy b{font-size:12px}
+.v2-cart-copy small{font-size:10px;line-height:1.35}
+.v2-cart-actions button{background:#fff;min-width:34px;height:32px}
+.v2-cart-actions button:not(.danger):active{background:var(--mf-brand-soft);color:var(--mf-brand)}
+
+/* 待處理三區：必選項、共享選項、連動加配 */
+.v2-task-strip{
+  gap:5px;
+  padding:5px 6px;
+  background:var(--mf-surface);
+  border-top:1px solid var(--mf-line);
+  border-bottom:1px solid var(--mf-line);
+}
+.v2-task-strip span{
+  min-width:0;
+  min-height:30px;
+  align-items:center;
+  padding:5px 7px;
+  border:1px solid var(--mf-line);
+  border-radius:8px;
+  background:var(--mf-surface-soft);
+  font-size:10px;
+  font-weight:800;
+}
+.v2-task-strip b{font-size:9px;white-space:nowrap}
+.v2-task-strip b.warning{padding:2px 5px;border-radius:5px;background:#fff0cf}
+.v2-task-strip b.success{padding:2px 5px;border-radius:5px;background:#eaf8ef}
+
+.v2-order-note{padding:4px 7px;background:var(--mf-surface)}
+.v2-order-note span{font-size:10px}
+.v2-order-note input{height:30px;background:#fff;font-size:10px}
+
+.v2-cart>footer{
+  grid-template-columns:78px minmax(78px,1fr) 136px;
+  gap:7px;
+  padding:7px;
+  background:linear-gradient(180deg,var(--mf-surface),var(--mf-surface-soft));
+}
+.v2-cart>footer button{height:52px;font-size:12px}
+.v2-cart>footer>div{justify-content:center;padding-left:3px}
+.v2-cart>footer span{font-size:9px}
+.v2-cart>footer strong{font-size:20px;line-height:1.1;color:var(--mf-ink)}
+.v2-cart>footer .secondary{background:#fff}
+.v2-cart>footer .primary{box-shadow:0 4px 10px rgba(210,75,28,.2)}
+
+/* 右側分類與商品 */
+.v2-category-matrix{
+  background:linear-gradient(180deg,var(--mf-surface),var(--mf-surface-soft));
+  gap:5px;
+  padding:6px;
+}
+.v2-category-matrix>button{
+  border-radius:9px;
+  background:#fff;
+  font-size:10px;
+}
+.v2-category-matrix>button.active{box-shadow:0 2px 6px rgba(210,75,28,.18)}
+.v2-category-matrix .search-cell{border-style:solid;background:var(--mf-brand-soft);color:var(--mf-brand)}
+
+.v2-product-grid{
+  gap:7px;
+  padding:7px;
+  background:color-mix(in srgb,var(--mf-surface-soft) 35%,transparent);
+}
+.v2-product-grid article{
+  min-height:112px;
+  border-color:color-mix(in srgb,var(--mf-line) 80%,transparent);
+  border-radius:10px;
+  box-shadow:0 2px 7px rgba(47,34,25,.07);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.v2-product-grid article:active{transform:scale(.985);box-shadow:0 1px 3px rgba(47,34,25,.08)}
+.v2-product-main{padding:0 8px 8px}
+.v2-product-main>div{
+  height:46px;
+  margin:0 -8px 6px;
+  background:linear-gradient(145deg,var(--mf-surface-soft),#fff);
+  color:var(--mf-brand);
+  font-size:16px;
+}
+.v2-product-main>div>b{font-size:16px;letter-spacing:.03em}
+.v2-product-main strong{
+  min-height:30px;
+  font-size:12px;
+  line-height:1.25;
+  color:var(--mf-ink);
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.v2-product-main>span{margin-top:2px;font-size:12px}
+.v2-product-more{
+  width:29px;
+  height:25px;
+  border:0;
+  background:rgba(255,255,255,.92);
+  color:var(--mf-muted);
+  box-shadow:0 1px 4px rgba(0,0,0,.09);
+}
+.v2-product-grid article>i{right:6px;bottom:6px;min-width:23px;height:23px;font-size:10px}
+
+.v2-quick-drinks{
+  position:relative;
+  align-items:center;
+  padding-left:70px;
+  background:linear-gradient(180deg,var(--mf-surface-soft),var(--mf-surface));
+}
+.v2-quick-drinks::before{
+  content:'快捷飲品';
+  position:absolute;
+  left:8px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--mf-muted);
+  font-size:10px;
+  font-weight:900;
+}
+.v2-quick-drinks button{background:#fff;min-width:112px}
+
+/* 快速模式只降低密度，不改位置與流程 */
+html[data-smt-quick-mode='true'] .v2-product-grid article{min-height:100px}
+html[data-smt-quick-mode='true'] .v2-product-main>div{height:38px}
+html[data-smt-quick-mode='true'] .v2-cart-list article{padding-top:5px;padding-bottom:5px}
+
+@media (max-width:900px) and (orientation:landscape), (max-height:520px) and (orientation:landscape){
+  .v2-cart{grid-template-rows:34px minmax(0,1fr) 32px 28px 46px}
+  .v2-cart>header{padding:0 6px}.v2-cart>header strong{font-size:11px}.v2-cart>header span{font-size:7px;padding:1px 4px}.v2-cart>header>b{font-size:7px;padding:2px 4px}
+  .v2-cart-list{padding:3px}.v2-cart-list article{padding:4px 4px 4px 3px;border-radius:6px}.v2-cart-copy strong,.v2-cart-copy b{font-size:9px}.v2-cart-copy small{font-size:7px}.v2-cart-actions button{min-width:24px;height:24px}
+  .v2-task-strip{gap:2px;padding:2px 3px}.v2-task-strip span{min-height:24px;padding:3px;font-size:6px;border-radius:5px}.v2-task-strip b{font-size:6px}.v2-task-strip b.warning,.v2-task-strip b.success{padding:1px 2px}
+  .v2-order-note{padding:2px 4px}.v2-order-note span{font-size:7px}.v2-order-note input{height:24px;font-size:7px}
+  .v2-cart>footer{grid-template-columns:52px minmax(54px,1fr) 94px;gap:3px;padding:3px}.v2-cart>footer button{height:38px;font-size:8px}.v2-cart>footer span{font-size:6px}.v2-cart>footer strong{font-size:12px}
+  .v2-category-matrix{gap:3px;padding:4px}.v2-category-matrix>button{font-size:7px;border-radius:6px}
+  .v2-product-grid{gap:4px;padding:4px}.v2-product-grid article{min-height:76px;border-radius:7px}.v2-product-main{padding:0 4px 4px}.v2-product-main>div{height:27px;margin:0 -4px 3px;font-size:11px}.v2-product-main>div>b{font-size:11px}.v2-product-main strong{font-size:8px;min-height:18px;line-height:1.15}.v2-product-main>span{font-size:8px;margin-top:1px}.v2-product-more{width:22px;height:19px;font-size:9px}.v2-product-grid article>i{min-width:16px;height:16px;font-size:7px;right:3px;bottom:3px}
+  .v2-quick-drinks{padding-left:48px}.v2-quick-drinks::before{left:5px;font-size:7px}.v2-quick-drinks button{min-width:76px}
+}
