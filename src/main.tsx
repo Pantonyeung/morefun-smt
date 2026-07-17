@@ -7,6 +7,7 @@ import './demo-truth.css';
 import './operations-app.css';
 import './final-design-lock.css';
 import './lockedV2/locked-v2.css';
+import './lockedV2/locked-v2-quick.css';
 import './lockedV2/product-drawer.css';
 
 function showStartupError(error: unknown) {
