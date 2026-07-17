@@ -12,6 +12,7 @@ import './lockedV2/product-drawer.css';
 import './lockedV2/locked-v2-quick.css';
 import './lockedV2/locked-v2-phone.css';
 import './lockedV2/status-bar-v3.css';
+import './lockedV2/order-workspace-v3.css';
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
