@@ -1,4 +1,4 @@
-const CACHE_NAME = 'morefun-smt-v2-landscape-20260717-1';
+const CACHE_NAME = 'morefun-smt-v2-statusbar-20260717-2';
 const APP_SHELL = ['./', './manifest.webmanifest', './smt-icon.svg'];
 
 self.addEventListener('install', (event) => {
