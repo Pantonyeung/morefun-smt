@@ -20,9 +20,17 @@ function readMode(value: unknown): RuntimeMode {
   return mode === 'demo' || mode === 'live' ? mode : 'staging';
 }
 
+function readUrlMode(): RuntimeMode | undefined {
+  if (typeof location === 'undefined') return undefined;
+  const value = new URLSearchParams(location.search).get('mode');
+  if (!value) return undefined;
+  const normalized = value.toLowerCase();
+  return normalized === 'demo' || normalized === 'live' || normalized === 'staging' ? normalized : undefined;
+}
+
 export function getRuntimeConfig(): SmtRuntimeConfig {
   const injected = (globalThis as typeof globalThis & { __MOREFUN_SMT_CONFIG__?: Partial<SmtRuntimeConfig> }).__MOREFUN_SMT_CONFIG__;
-  const mode = readMode(injected?.mode || import.meta.env.VITE_RUNTIME_MODE || localStorage.getItem('morefun.smt.runtime_mode'));
+  const mode = readMode(readUrlMode() || localStorage.getItem('morefun.smt.runtime_mode') || injected?.mode || import.meta.env.VITE_RUNTIME_MODE);
   return {
     mode,
     orderApiBaseUrl: String(injected?.orderApiBaseUrl || import.meta.env.VITE_ORDER_API_URL || '').replace(/\/+$/, ''),
@@ -49,5 +57,7 @@ export function validateRuntimeConfig(config: SmtRuntimeConfig): string[] {
 
 export function setRuntimeMode(mode: RuntimeMode) {
   localStorage.setItem('morefun.smt.runtime_mode', mode);
-  location.reload();
+  const url = new URL(location.href);
+  url.searchParams.set('mode', mode);
+  location.replace(url.toString());
 }
