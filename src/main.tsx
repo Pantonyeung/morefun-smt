@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import OperationsApp from './OperationsApp';
+import './themeRuntime';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
