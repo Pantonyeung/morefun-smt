@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import LockedOperationsAppV2 from './lockedV2/LockedOperationsAppV2';
 import './themeRuntime';
+import './lockedV2/traditional-chinese-runtime';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
