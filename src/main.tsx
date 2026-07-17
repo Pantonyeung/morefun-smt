@@ -7,6 +7,7 @@ import './demo-truth.css';
 import './operations-app.css';
 import './final-design-lock.css';
 import './locked-operations.css';
+import './locked-drawer.css';
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
