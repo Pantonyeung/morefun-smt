@@ -2,13 +2,13 @@ import { useMemo, useState } from 'react';
 import type { CartItem, OrderSource, PaymentMethod, Product, RuntimeMode } from '../domain/types';
 
 const sources: Array<{ key: OrderSource; label: string }> = [
-  { key: 'walk_in', label: '外賣' },
-  { key: 'phone', label: 'WhatsApp／電話' },
-  { key: 'keeta', label: 'Keeta' },
-  { key: 'foodpanda', label: 'Foodpanda' },
+  { key: 'walk_in', label: '現場外賣' },
+  { key: 'phone', label: 'WhatsApp／電話單' },
+  { key: 'keeta', label: 'Keeta平台' },
+  { key: 'foodpanda', label: 'Foodpanda平台' },
 ];
 const payments: Array<{ key: PaymentMethod; label: string }> = [
-  { key: 'cash', label: '現金' }, { key: 'alipay', label: 'Alipay' }, { key: 'wechat_pay', label: 'WeChat Pay' },
+  { key: 'cash', label: '現金' }, { key: 'alipay', label: '支付寶' }, { key: 'wechat_pay', label: '微信支付' },
   { key: 'fps', label: '轉數快' }, { key: 'payme', label: 'PayMe' }, { key: 'mixed', label: '組合支付' },
 ];
 
@@ -38,7 +38,7 @@ export function OperationsCheckout({ items, products, total, runtimeMode, busy, 
   };
 
   return <div className="ops-checkout" role="dialog" aria-modal="true">
-    <header><button onClick={onClose}>← 返回</button><div><strong>核對／付款</strong><small>{items.length} 項 · {runtimeMode.toUpperCase()}</small></div><b>HK${total}</b></header>
+    <header><button onClick={onClose}>← 返回</button><div><strong>核對／付款</strong><small>{items.length}項 · {runtimeModeLabel(runtimeMode)}</small></div><b>HK${total}</b></header>
     <main>
       <section className="ops-checkout-summary"><h2>訂單內容</h2>{items.map((item, index) => <article key={item.id}><i>{index + 1}</i><div><strong>{products[item.productId]?.code} {products[item.productId]?.name}</strong><p>{item.summary}</p></div><span>×{item.quantity}</span><b>HK${item.estimatedUnitPrice * item.quantity}</b></article>)}</section>
       <section className="ops-checkout-pay"><h2>訂單來源</h2><div className="ops-source-grid">{sources.map((option) => <button key={option.key} className={source === option.key ? 'active' : ''} onClick={() => chooseSource(option.key)}>{option.label}</button>)}</div>
@@ -50,4 +50,10 @@ export function OperationsCheckout({ items, products, total, runtimeMode, busy, 
     </main>
     <footer><button className="secondary" onClick={onClose}>返回修改</button><button className="primary" disabled={busy} onClick={() => void submit()}>{busy ? '處理中…' : platform ? '確認平台訂單' : externalUnclassified ? '確認訂單' : '確認收款'}</button></footer>
   </div>;
+}
+
+function runtimeModeLabel(mode: RuntimeMode): string {
+  if (mode === 'demo') return '示範模式';
+  if (mode === 'staging') return '測試模式';
+  return '正式模式';
 }
