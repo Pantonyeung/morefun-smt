@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import OperationsApp from './OperationsApp';
+import LockedOperationsApp from './LockedOperationsApp';
 import './themeRuntime';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
 import './final-design-lock.css';
+import './locked-operations.css';
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
@@ -45,7 +46,7 @@ if (!rootElement) throw new Error('找不到 SMT 根節點');
 try {
   ReactDOM.createRoot(rootElement).render(
     <StartupBoundary>
-      <OperationsApp />
+      <LockedOperationsApp />
       <BootComplete />
     </StartupBoundary>,
   );
