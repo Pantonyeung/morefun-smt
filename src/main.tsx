@@ -1,10 +1,18 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import OperationsApp from './OperationsApp';
+import LockedOperationsAppV2 from './lockedV2/LockedOperationsAppV2';
+import './themeRuntime';
+import './lockedV2/traditional-chinese-runtime';
 import './styles.css';
 import './demo-truth.css';
 import './operations-app.css';
 import './final-design-lock.css';
+import './lockedV2/locked-v2.css';
+import './lockedV2/product-drawer.css';
+import './lockedV2/locked-v2-quick.css';
+import './lockedV2/locked-v2-phone.css';
+import './lockedV2/status-bar-v3.css';
+import './lockedV2/order-workspace-v3.css';
 
 function showStartupError(error: unknown) {
   const element = document.getElementById('startup-status');
@@ -44,7 +52,7 @@ if (!rootElement) throw new Error('找不到 SMT 根節點');
 try {
   ReactDOM.createRoot(rootElement).render(
     <StartupBoundary>
-      <OperationsApp />
+      <LockedOperationsAppV2 />
       <BootComplete />
     </StartupBoundary>,
   );

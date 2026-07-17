@@ -1,0 +1,40 @@
+.v2-drawer-layer{position:fixed;inset:var(--v2-top) 0 var(--v2-nav) 30%;z-index:80;background:rgba(22,18,16,.18);backdrop-filter:blur(2px);display:flex;justify-content:flex-end}
+.v2-product-drawer{width:min(72vw,980px);height:100%;background:var(--mf-surface);border-left:1px solid var(--mf-line);box-shadow:-16px 0 38px rgba(0,0,0,.2);display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
+.v2-product-drawer>header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--mf-line)}
+.v2-product-drawer>header span{font-size:12px;color:var(--mf-muted)}
+.v2-product-drawer>header h2{margin:2px 0;font-size:20px}
+.v2-product-drawer>header p{margin:0;color:var(--mf-muted);font-size:12px}
+.v2-product-drawer>header button{width:38px;height:38px;border:1px solid var(--mf-line);border-radius:9px;background:var(--mf-surface-soft)}
+.v2-quick-edit,.v2-detail-scroll{min-height:0;overflow:auto;padding:10px}
+.v2-quick-edit article{border:1px solid var(--mf-line);border-radius:10px;padding:10px;background:var(--mf-surface-soft)}
+.v2-quick-edit article p{margin:5px 0 0;color:var(--mf-muted)}
+.v2-quick-edit label,.v2-note-field{display:grid;gap:6px;margin-top:10px;font-weight:800}
+.v2-quick-edit textarea,.v2-note-field textarea{min-height:70px;border:1px solid var(--mf-line);border-radius:9px;padding:9px;resize:vertical;background:var(--mf-surface-soft)}
+.v2-full-detail{width:100%;height:44px;margin-top:10px;border:1px solid var(--mf-brand);border-radius:9px;background:var(--mf-brand-soft);color:var(--mf-brand);font-weight:900}
+.v2-rule-section{border:1px solid var(--mf-line);border-radius:11px;margin-bottom:9px;overflow:hidden}
+.v2-rule-section>header{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;background:var(--mf-surface-soft);border-bottom:1px solid var(--mf-line)}
+.v2-rule-section>header strong{font-size:15px}
+.v2-rule-section>header span{font-size:11px}.v2-rule-section>header span.success{color:var(--mf-ok)}.v2-rule-section>header span.warning{color:var(--mf-warn)}
+.v2-rule-section>div{padding:9px}
+.v2-option-group{border:0;padding:0;margin:0 0 9px}
+.v2-option-group:last-child{margin-bottom:0}
+.v2-option-group legend{font-weight:900;font-size:12px;margin-bottom:6px}
+.v2-option-group legend em{font-style:normal;font-size:9px;color:#fff;background:var(--mf-danger);border-radius:999px;padding:2px 5px;margin-left:5px}
+.v2-option-group>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.v2-choice{min-height:44px;border:1px solid var(--mf-line);border-radius:9px;background:var(--mf-surface);padding:7px 8px;text-align:left;font-weight:800;color:var(--mf-ink)}
+.v2-choice.active{border-color:var(--mf-brand);background:var(--mf-brand-soft);color:var(--mf-brand)}
+.v2-choice:disabled{opacity:.45}
+.v2-choice small{display:block;margin-top:3px;color:var(--mf-muted);font-weight:700}
+.v2-empty-rule{margin:0;color:var(--mf-muted);font-size:12px}
+.v2-product-drawer>footer{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px 12px;border-top:1px solid var(--mf-line);background:var(--mf-surface)}
+.v2-product-drawer>footer>div{display:flex;flex-direction:column}.v2-product-drawer>footer span{font-size:11px;color:var(--mf-muted)}.v2-product-drawer>footer strong{font-size:18px;color:var(--mf-brand)}
+.v2-product-drawer>footer button{height:46px;border-radius:9px;padding:0 16px;font-weight:900}.v2-product-drawer>footer .secondary{border:1px solid var(--mf-line);background:var(--mf-surface-soft)}.v2-product-drawer>footer .primary{border:0;background:var(--mf-brand);color:#fff}.v2-product-drawer>footer .primary:disabled{background:#d4ccc7;color:#8a827d}
+@media (max-width:900px) and (orientation:landscape){
+  .v2-product-drawer{width:70vw}
+  .v2-product-drawer>header{padding:7px 9px}.v2-product-drawer>header h2{font-size:15px}.v2-product-drawer>header p{font-size:10px}
+  .v2-quick-edit,.v2-detail-scroll{padding:6px}
+  .v2-rule-section{margin-bottom:6px}.v2-rule-section>header{padding:6px 7px}.v2-rule-section>header strong{font-size:12px}.v2-rule-section>div{padding:6px}
+  .v2-option-group{margin-bottom:6px}.v2-option-group legend{font-size:10px}.v2-option-group>div{gap:4px}
+  .v2-choice{min-height:34px;padding:4px 5px;font-size:10px}
+  .v2-product-drawer>footer{padding:5px 7px}.v2-product-drawer>footer button{height:36px;padding:0 10px;font-size:11px}.v2-product-drawer>footer strong{font-size:14px}
+}

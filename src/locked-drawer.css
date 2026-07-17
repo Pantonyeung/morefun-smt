@@ -1,0 +1,11 @@
+.locked-app .modal-overlay{align-items:stretch;justify-content:flex-end;background:rgba(25,20,18,.2);backdrop-filter:blur(2px);padding:calc(60px + env(safe-area-inset-top)) 0 calc(76px + env(safe-area-inset-bottom)) min(30vw,420px)}
+.locked-app .modal-panel.modal-wide{width:min(72vw,980px);max-width:none;height:100%;max-height:none;border-radius:14px 0 0 14px;box-shadow:-16px 0 38px rgba(0,0,0,.2);display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+.locked-app .modal-header{padding:14px 16px;border-bottom:1px solid var(--mf-line)}
+.locked-app .modal-content{overflow:auto;padding:12px}
+.locked-app .modal-footer{padding:10px 14px;border-top:1px solid var(--mf-line);background:var(--mf-surface)}
+.locked-app .configurator-layout{grid-template-columns:180px minmax(0,1fr) 220px;gap:12px}
+.locked-app .product-preview,.locked-app .selection-summary{position:sticky;top:0;align-self:start}
+.locked-app .option-group{border:1px solid var(--mf-line);border-radius:10px;padding:10px;margin:0 0 10px}
+.locked-app .choice{min-height:46px}
+@media(max-width:1180px){.locked-app .modal-overlay{padding-left:30%}.locked-app .modal-panel.modal-wide{width:70vw}.locked-app .configurator-layout{grid-template-columns:150px minmax(0,1fr)}.locked-app .selection-summary{grid-column:1/-1;position:static}}
+@media(max-height:760px){.locked-app .modal-overlay{padding-top:calc(56px + env(safe-area-inset-top));padding-bottom:calc(70px + env(safe-area-inset-bottom))}}
