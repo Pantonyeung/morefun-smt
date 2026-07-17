@@ -44,6 +44,8 @@ const TOKEN_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\babnormal\b/gi, '異常'],
 ];
 
+type TranslatableRoot = Node & ParentNode;
+
 function translateText(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return input;
@@ -67,9 +69,9 @@ function translateAttributes(element: Element): void {
   }
 }
 
-function translateTree(root: ParentNode): void {
+function translateTree(root: TranslatableRoot): void {
   if (root instanceof Element) translateAttributes(root);
-  root.querySelectorAll?.('*').forEach(translateAttributes);
+  root.querySelectorAll('*').forEach(translateAttributes);
 
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
